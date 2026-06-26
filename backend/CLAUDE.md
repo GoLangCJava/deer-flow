@@ -641,3 +641,4 @@ See `docs/` directory for detailed documentation:
 - [PATH_EXAMPLES.md](docs/PATH_EXAMPLES.md) - Path types and usage
 - [summarization.md](docs/summarization.md) - Context summarization
 - [plan_mode_usage.md](docs/plan_mode_usage.md) - Plan mode with TodoList
+- [AGENT_LOGIC_PSEUDOCODE_ZH.md](docs/AGENT_LOGIC_PSEUDOCODE_ZH.md) - Agent 核心逻辑分析与伪代码 (中文)
