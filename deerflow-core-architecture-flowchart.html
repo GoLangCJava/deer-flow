@@ -1,0 +1,2878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🦌 DeerFlow 2.0 核心代码逻辑流程图与架构全景解析</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Prism.js for Syntax Highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" id="prism-theme" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+
+  <!-- Mermaid.js for Flowcharts -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --border-color: #374151;
+      --border-accent: #3b82f6;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --accent-rose: #f43f5e;
+      --code-bg: #090d16;
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-glow: 0 0 25px rgba(59, 130, 246, 0.25);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f5f9;
+      --bg-card: rgba(255, 255, 255, 0.9);
+      --border-color: #e2e8f0;
+      --border-accent: #2563eb;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --accent-blue: #2563eb;
+      --accent-cyan: #0891b2;
+      --accent-emerald: #059669;
+      --accent-amber: #d97706;
+      --accent-purple: #7c3aed;
+      --accent-rose: #e11d48;
+      --code-bg: #1e293b;
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+      --shadow-glow: 0 0 25px rgba(37, 99, 235, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    code, pre {
+      font-family: 'Fira Code', Consolas, Monaco, 'Courier New', Courier, monospace;
+    }
+
+    /* Top Sticky Header */
+    header.top-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(11, 15, 25, 0.9);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    [data-theme="light"] header.top-header {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .header-logo .icon {
+      font-size: 1.8rem;
+    }
+
+    .header-logo h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .search-box {
+      position: relative;
+      width: 280px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 9999px;
+      padding: 0.45rem 1rem 0.45rem 2.25rem;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .theme-toggle-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.45rem 0.85rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--border-color);
+    }
+
+    /* Main Container & Layout */
+    .app-layout {
+      display: flex;
+      min-height: calc(100vh - 60px);
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      position: sticky;
+      top: 61px;
+      height: calc(100vh - 61px);
+      overflow-y: auto;
+      padding: 1.5rem 1rem;
+    }
+
+    .sidebar-nav-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-left: 0.75rem;
+      font-weight: 700;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item a:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .nav-item.active a {
+      color: #ffffff;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .nav-item .badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 9999px;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+    }
+
+    .nav-item.active .badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    /* Main Content Area */
+    main.main-content {
+      flex: 1;
+      padding: 2rem 3rem 5rem;
+      max-width: 1300px;
+      overflow-x: hidden;
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(88, 28, 135, 0.4) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 1rem;
+      padding: 2rem 2.5rem;
+      margin-bottom: 3rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.025em;
+      line-height: 1.25;
+    }
+
+    .hero-subtitle {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 900px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+    }
+
+    /* Section Styles */
+    section.doc-section {
+      margin-bottom: 4.5rem;
+      scroll-margin-top: 80px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .section-icon {
+      font-size: 1.5rem;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.75rem;
+      background: var(--bg-tertiary);
+      color: var(--accent-blue);
+      border: 1px solid var(--border-color);
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.015em;
+    }
+
+    .section-desc {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.7;
+    }
+
+    /* Card Containers */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.875rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    /* Mermaid Flowchart Card & Controls */
+    .diagram-container {
+      position: relative;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.875rem;
+      padding: 2rem 1.5rem 1.5rem;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    .diagram-toolbar {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      display: flex;
+      gap: 0.35rem;
+      z-index: 10;
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+    }
+
+    .diagram-toolbar button {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .diagram-toolbar button:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .mermaid-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      display: flex;
+      justify-content: center;
+      min-height: 200px;
+      transition: transform 0.2s ease;
+      transform-origin: center top;
+    }
+
+    .mermaid {
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Step Grid & Flow Elements */
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .step-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-blue);
+    }
+
+    .step-number {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border-radius: 9999px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .step-icon {
+      font-size: 1.25rem;
+      color: var(--accent-cyan);
+      margin-bottom: 0.5rem;
+    }
+
+    .step-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Code Box and Details */
+    .code-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+
+    .code-header {
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .code-path {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .code-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .copy-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .code-content {
+      max-height: 480px;
+      overflow-y: auto;
+      padding: 0;
+      margin: 0;
+    }
+
+    .code-content pre {
+      margin: 0 !important;
+      padding: 1.25rem !important;
+      background: transparent !important;
+      font-size: 0.85rem !important;
+    }
+
+    /* Collapsible Details */
+    details.code-details {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+
+    details.code-details summary {
+      padding: 0.85rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      background: var(--bg-tertiary);
+      transition: background 0.2s;
+    }
+
+    details.code-details summary:hover {
+      background: var(--border-color);
+    }
+
+    details.code-details summary::after {
+      content: '展开代码 ▼';
+      font-size: 0.75rem;
+      color: var(--accent-blue);
+      font-weight: 500;
+    }
+
+    details.code-details[open] summary::after {
+      content: '收起代码 ▲';
+    }
+
+    /* Table Styles */
+    .data-table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      padding: 0.85rem 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    table.data-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    table.data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary);
+    }
+
+    .hook-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.375rem;
+      margin-right: 0.3rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .hook-before-agent { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .hook-before-model { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .hook-wrap-model   { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); }
+    .hook-after-model  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .hook-after-agent  { background: rgba(244, 63, 94, 0.2); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.4); }
+    .hook-wrap-tool    { background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.4); }
+
+    /* Key Invariants / Callouts */
+    .callout {
+      border-left: 4px solid var(--accent-blue);
+      background: rgba(59, 130, 246, 0.08);
+      padding: 1rem 1.25rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .callout strong {
+      color: var(--text-primary);
+    }
+
+    /* Footer */
+    footer.page-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      background: var(--bg-secondary);
+    }
+
+    @media (max-width: 1024px) {
+      aside.sidebar {
+        display: none;
+      }
+      main.main-content {
+        padding: 1.5rem 1.5rem 4rem;
+      }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- Top Sticky Header -->
+  <header class="top-header">
+    <a href="#" class="header-logo">
+      <span class="icon">🦌</span>
+      <div>
+        <h1>DeerFlow 2.0 架构与核心代码全景流程图</h1>
+      </div>
+    </a>
+
+    <div class="header-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="搜索组件/中间件/函数/代码..." oninput="handleSearch(this.value)">
+      </div>
+      <button class="theme-toggle-btn" onclick="toggleTheme()">
+        <i class="fa-solid fa-moon" id="themeIcon"></i>
+        <span id="themeText">明亮模式</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-nav-title">架构与流程目录</div>
+      <ul class="nav-list" id="sidebarNav">
+        <li class="nav-item active">
+          <a href="#overview">
+            <i class="fa-solid fa-network-wired"></i>
+            <span>1. 全局架构与请求流</span>
+            <span class="badge">Nginx/Gateway</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#lead-agent">
+            <i class="fa-solid fa-sitemap"></i>
+            <span>2. 主代理装配流程</span>
+            <span class="badge">make_lead_agent</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#middleware-pipeline">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>3. 14+ 中间件管道</span>
+            <span class="badge">Pipeline</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#runtime-worker">
+            <i class="fa-solid fa-bolt"></i>
+            <span>4. 运行时主循环与 SSE</span>
+            <span class="badge">run_agent</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#subagent-system">
+            <i class="fa-solid fa-robot"></i>
+            <span>5. Sub-agent 任务委派</span>
+            <span class="badge">task_tool</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#core-subsystems">
+            <i class="fa-solid fa-cubes"></i>
+            <span>6. 沙箱/记忆/MCP子系统</span>
+            <span class="badge">Core</span>
+          </a>
+        </li>
+      </ul>
+
+      <div style="margin-top: 2rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 0.5rem; border: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-secondary);">
+        <div style="font-weight: 600; margin-bottom: 0.4rem; color: var(--text-primary);"><i class="fa-solid fa-circle-info" style="color: var(--accent-blue);"></i> 交互说明</div>
+        <p>1. 点击流程图右上角可缩放/重置<br>2. 展开各折叠卡片查看仓库真实源码<br>3. 点击代码右上角按钮可一键复制代码</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <h2 class="hero-title">DeerFlow 2.0 Super Agent Harness 核心代码全景</h2>
+        <p class="hero-subtitle">
+          DeerFlow 2.0 是一套基于 LangGraph 的超级 Agent 框架，通过单主代理（Lead Agent）统一编排多子代理（Sub-agents）、持久化长期记忆（DeerMem）、容器化安全沙箱（Sandbox）及动态可扩展技能（Skills/MCP）。
+        </p>
+        <div class="hero-tags">
+          <span class="pill-tag"><i class="fa-solid fa-microchip"></i> LangGraph 引擎</span>
+          <span class="pill-tag"><i class="fa-solid fa-shield-halved"></i> 14+ 阶段 Middleware</span>
+          <span class="pill-tag"><i class="fa-solid fa-box-open"></i> Docker / 本地沙箱隔离</span>
+          <span class="pill-tag"><i class="fa-solid fa-brain"></i> DeerMem 记忆提取</span>
+          <span class="pill-tag"><i class="fa-solid fa-bolt"></i> SSE 实时流式响应</span>
+        </div>
+      </div>
+
+      <!-- SECTION 1: 全局服务拓扑与请求生命周期 -->
+      <section id="overview" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-network-wired"></i></div>
+            <h2 class="section-title">1. 全局服务拓扑与 HTTP/SSE 请求生命周期</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          DeerFlow 2.0 采用微服务与网关嵌入式 Agent 运行时架构。Nginx（端口 2026）作为唯一的公共入口，根据 URL 将客户端请求无缝分发给 Next.js 前端（端口 3000）或 FastAPI Gateway（端口 8001），并通过 URL Rewrite 实现了与标准 LangGraph SDK 客户端的完全兼容。
+        </p>
+
+        <!-- Diagram 1 -->
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <button onclick="zoomDiagram(this, 1.15)" title="放大"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="zoomDiagram(this, 0.85)" title="缩小"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="resetDiagram(this)" title="重置"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+graph TB
+    subgraph ClientLayer ["🖥️ 客户端层 (Client Layer)"]
+        Browser["Web 浏览器 (Next.js 聊天界面)"]
+        IM["IM 接入渠道 (飞书/Slack/钉钉/Telegram/GitHub Webhook)"]
+        SDK["LangGraph SDK / Python 嵌入式客户端"]
+    end
+
+    subgraph IngressLayer ["🌐 入口反向代理 (Ingress)"]
+        Nginx["Nginx Reverse Proxy (Port 2026)<br/>• 默认 Loopback 绑定 (127.0.0.1)<br/>• URL Rewrite: /api/langgraph/* ➔ /api/*"]
+    end
+
+    subgraph AppLayer ["⚡ 服务层 (Application Services)"]
+        Frontend["Next.js 前端 (Port 3000)<br/>React 19 / TanStack Query / SSE 订阅"]
+        Gateway["FastAPI Gateway (Port 8001)<br/>• REST Routers (threads/models/uploads/mcp/skills)<br/>• 嵌入式 LangGraph 运行时"]
+    end
+
+    subgraph CoreRuntime ["⚙️ 核心 Agent 执行引擎 (Harness Runtime)"]
+        RunMgr["RunManager<br/>• 租约控制 (Lease)<br/>• 孤儿恢复 (Orphan Recovery)<br/>• 幂等启动 (Idempotency)"]
+        Worker["Run Worker (asyncio.Task)<br/>• 线程级 Checkpoint 锁<br/>• 目标验证与继续循环<br/>• 工作区变更比对"]
+        Bridge["StreamBridge<br/>• SSE 流分发 (messages/values/custom)<br/>• Redis / 内存广播后端"]
+        LeadAgent["Lead Agent Graph<br/>• 14+ 阶段 Middleware 管道<br/>• 动态提示词与工具组装"]
+    end
+
+    subgraph ResourceLayer ["📦 资源与子系统 (Subsystems & Storage)"]
+        Checkpointer["Checkpointer 存储<br/>SQLite / PostgreSQL / Redis"]
+        Sandbox["Sandbox Provider<br/>LocalSandbox (直接执行) / AioSandbox (Docker)"]
+        DeerMem["DeerMem 长期记忆<br/>Markdown 事实库 / 向量检索 / 防抖提取"]
+        SubagentPool["Subagent Executor<br/>后台并行任务池 / 步骤事件流"]
+        MCP["MCP Servers<br/>stdio / SSE / HTTP 协议工具"]
+    end
+
+    Browser -->|HTTP / SSE 请求| Nginx
+    IM -->|Webhook / API| Nginx
+    SDK -->|/api/langgraph/*| Nginx
+
+    Nginx -->|/* (前端静态资源/路由)| Frontend
+    Nginx -->|/api/* (重写后的 Agent 路由)| Gateway
+
+    Gateway -->|创建/管理 Run| RunMgr
+    RunMgr -->|后台异步拉起| Worker
+    Worker -->|astream 驱动执行| LeadAgent
+    Worker -->|发布 SSE 事件| Bridge
+    Bridge -->|流式推送到 HTTP 响应| Gateway
+    Gateway -->|实时 Token 流| Nginx
+    Nginx -->|SSE 数据帧| Browser
+
+    LeadAgent --> Checkpointer
+    LeadAgent --> Sandbox
+    LeadAgent --> DeerMem
+    LeadAgent --> SubagentPool
+    LeadAgent --> MCP
+            </div>
+          </div>
+        </div>
+
+        <div class="step-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-icon"><i class="fa-solid fa-arrow-right-to-bracket"></i></div>
+            <div class="step-title">统一反向代理</div>
+            <div class="step-desc">Nginx 监听 2026 端口。将 <code>/api/langgraph/*</code> 抹除前缀重写至 Gateway <code>/api/*</code>，保持对 LangGraph 原生协议的无感兼容。</div>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-icon"><i class="fa-solid fa-key"></i></div>
+            <div class="step-title">RunManager 租约与幂等</div>
+            <div class="step-desc">Gateway 接收到 Run 创建请求后，通过 RunManager 申领租约、注册幂等性校验，防止重复触发与死锁。</div>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
+            <div class="step-title">异步 Task 与 SSE 桥接</div>
+            <div class="step-desc">启动独立 <code>asyncio.Task</code> 执行 <code>run_agent</code>，通过 <code>StreamBridge</code> 发送 <code>messages</code>、<code>values</code> 及 <code>task_*</code> 事件。</div>
+          </div>
+        </div>
+
+        <!-- Code Block 1: RunManager & Gateway Entry -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：RunManager 租约控制与幂等创建 (packages/harness/deerflow/runtime/runs/manager.py)</div>
+          <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            <code>RunManager.create_run</code> 负责在多进程/多 Worker 场景下通过 SQLite / PostgreSQL 唯一约束及过期租约检查实现并发安全与孤儿恢复。
+          </p>
+          <details class="code-details" open>
+            <summary>查看核心源码 (RunManager.create_run)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/runtime/runs/manager.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class RunManager:
+    &quot;&quot;&quot;In-memory run registry with optional persistent RunStore backing.
+
+    All mutations are protected by an asyncio lock. When a ``store`` is
+    provided, serializable metadata is also persisted to the store so
+    that run history survives process restarts.
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        store: RunStore | None = None,
+        *,
+        persistence_retry_policy: PersistenceRetryPolicy | None = None,
+        worker_id: str | None = None,
+        run_ownership_config: RunOwnershipConfig | None = None,
+        event_store: RunEventStore | None = None,
+        on_orphans_recovered: OrphanRecoveryCallback | None = None,
+    ) -&gt; None:
+        self._runs: dict[str, RunRecord] = {}
+        # Secondary index: thread_id -&gt; insertion-ordered run_id set (a dict is
+        # used as an ordered set), maintained in lockstep with ``_runs`` so
+        # per-thread queries avoid O(total in-memory runs) full scans while
+        # preserving ``_runs`` iteration order (see ``_thread_records_locked``).
+        self._runs_by_thread: dict[str, dict[str, None]] = {}
+        self._lock = asyncio.Lock()
+        self._store = store
+        self._persistence_retry_policy = persistence_retry_policy or PersistenceRetryPolicy()
+        self._worker_id = worker_id or _generate_worker_id()
+        self._run_ownership_config = run_ownership_config
+        self._event_store = event_store
+        self._on_orphans_recovered = on_orphans_recovered
+        self._heartbeat_task: asyncio.Task | None = None
+        self._heartbeat_stop: asyncio.Event | None = None
+        self._orphan_recovery_task: asyncio.Task[None] | None = None
+
+    def _index_run_locked(self, record: RunRecord) -&gt; None:
+        &quot;&quot;&quot;Register *record* in the thread index. Caller must hold ``self._lock``.&quot;&quot;&quot;
+        self._runs_by_thread.setdefault(record.thread_id, {})[record.run_id] = None
+
+    def _unindex_run_locked(self, run_id: str, thread_id: str) -&gt; None:
+        &quot;&quot;&quot;Drop *run_id* from the thread index. Caller must hold ``self._lock``.&quot;&quot;&quot;
+        bucket = self._runs_by_thread.get(thread_id)
+        if bucket is not None:
+            bucket.pop(run_id, None)
+            if not bucket:
+                self._runs_by_thread.pop(thread_id, None)
+
+    def _thread_records_locked(self, thread_id: str) -&gt; list[RunRecord]:
+        &quot;&quot;&quot;Return live in-memory records for *thread_id*. Caller must hold ``self._lock``.
+
+        Uses the ``_runs_by_thread`` index for O(runs-in-thread) lookup instead of
+        scanning every in-memory run. Correctness rests on the index and ``_runs``
+        being mutated in lockstep under ``self._lock`` (no ``await`` between the two
+        writes), so any holder of the lock sees them agree. The ``self._runs.get``
+        filter is defense-in-depth, not reconciliation: it drops a stale id still in
+        the index but already gone from ``_runs``, yet it cannot recover a run that is
+        in ``_runs`` but missing from the index (such a run would be silently
+        omitted). It guards only that one direction, should a future refactor ever
+        break the lockstep invariant.
+        &quot;&quot;&quot;
+        run_ids = self._runs_by_thread.get(thread_id)
+        if not run_ids:
+            return []
+        return [record for run_id in run_ids if (record := self._runs.get(run_id)) is not None]
+
+    @staticmethod
+    def _store_put_payload(record: RunRecord, *, error: str | None = None, stop_reason: str | None = None) -&gt; dict[str, Any]:
+        payload = {
+            &quot;thread_id&quot;: record.thread_id,
+            &quot;assistant_id&quot;: record.assistant_id,
+            &quot;status&quot;: record.status.value,
+            &quot;operation_kind&quot;: record.operation_kind.value,
+            &quot;multitask_strategy&quot;: record.multitask_strategy,
+            &quot;metadata&quot;: record.metadata or {},
+            &quot;kwargs&quot;: record.kwargs or {},
+            &quot;error&quot;: error if error is not None else record.error,
+            &quot;created_at&quot;: record.created_at,
+            &quot;model_name&quot;: record.model_name,
+            &quot;owner_worker_id&quot;: record.owner_worker_id,
+            &quot;lease_expires_at&quot;: record.lease_expires_at,
+            &quot;idempotency_key&quot;: record.idempotency_key,
+        }
+        if record.user_id is not None:
+            payload[&quot;user_id&quot;] = record.user_id
+        if record.stop_reason is not None:
+            payload[&quot;stop_reason&quot;] = record.stop_reason
+        return payload
+
+    async def _call_store_with_retry(
+        self,
+        operation_name: str,
+        run_id: str,
+        operation: Callable[[], Awaitable[Any]],
+    ) -&gt; Any:
+        &quot;&quot;&quot;Run a short store operation with bounded retries for SQLite pressure.&quot;&quot;&quot;
+        policy = self._persistence_retry_policy
+        attempt = 1
+        delay = policy.initial_delay
+        while True:
+            try:
+                return await operation()
+            except Exception as exc:</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- SECTION 2: 主代理装配流程 -->
+      <section id="lead-agent" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-sitemap"></i></div>
+            <h2 class="section-title">2. 主代理装配与初始化流程 (<code>make_lead_agent</code>)</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          Lead Agent 的装配是 DeerFlow 运行的核心起点。通过 <code>make_lead_agent</code> 工厂函数，系统根据运行配置动态解析模型、RBAC 授权规则、多源工具集、延迟 MCP 工具编排、14+ 阶段 Middleware 栈，最终编译为 LangGraph 可执行图。
+        </p>
+
+        <!-- Diagram 2 -->
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <button onclick="zoomDiagram(this, 1.15)" title="放大"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="zoomDiagram(this, 0.85)" title="缩小"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="resetDiagram(this)" title="重置"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+graph TD
+    Start(["🚀 调用 make_lead_agent(config)"]) --> ParseCfg["1. 解析运行时配置 & 上下文<br/>• user_id / agent_name<br/>• is_plan_mode / subagent_enabled<br/>• channel_name (Webhook安全隔离)"]
+
+    ParseCfg --> ResolveModel["2. 模型解析与授权校验<br/>• _resolve_model_name(requested)<br/>• _authorize_model_name(RBAC enforce)<br/>• 确定 thinking_enabled & supports_vision"]
+
+    ResolveModel --> GatherTools["3. 多源工具池收集 (Tool Gathering)<br/>• 内置工具: present_files, ask_clarification, task<br/>• 沙箱工具: bash, read_file, write_file, ls, grep<br/>• 外部工具: web_search, fetch, MCP servers<br/>• 自定义代理工具: update_agent (Webhook通道自动禁用)"]
+
+    GatherTools --> AuthzFilter["4. 授权过滤与延迟工具封装<br/>• apply_tool_authorization (RBAC 策略校验)<br/>• assemble_deferred_tools (超大 MCP 延迟加载)<br/>• 构建 mcp_routing_middleware & 路由提示词"]
+
+    AuthzFilter --> BuildMW["5. 构建 Middleware 执行链<br/>• build_lead_runtime_middlewares (基础沙箱/安全)<br/>• 挂载 14 个 Lead 专属 Middleware<br/>• 注册扩展贡献插件 Middleware"]
+
+    BuildMW --> BuildPrompt["6. 生成静态系统提示词 (Prompt Assembly)<br/>• apply_prompt_template<br/>• 注入工具说明、可用技能索引、Subagent 配额规则<br/>• 剥离易变时间/记忆 (保持前缀缓存命中)"]
+
+    BuildPrompt --> CompileGraph["7. 编译 LangGraph 可执行图<br/>• create_agent(model, tools, middleware, prompt)<br/>• 规范化 ThreadState 状态契约 (Mode 适配)"]
+
+    CompileGraph --> OutputAssembly(["📦 返回 LeadAgentAssembly(graph, descriptor)"])
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>🔥 重要设计不变量 (Tracing Invariant)：</strong>
+          在 <code>make_lead_agent</code> 内部创建的所有 <code>ChatModel</code> 实例，必须显式传递 <code>attach_tracing=False</code>。Langfuse / LangSmith 的 Tracing Callback 已在图调用的根节点统一挂载，若在内部重复挂载会导致 Span 重复且丢失 <code>session_id</code> 与 <code>user_id</code> 上下文。
+        </div>
+
+        <!-- Code Block 2: make_lead_agent -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：主代理装配工厂 (backend/packages/harness/deerflow/agents/lead_agent/agent.py)</div>
+          <details class="code-details" open>
+            <summary>查看核心源码 (make_lead_agent & build_middlewares)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/agents/lead_agent/agent.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">def make_lead_agent(config: RunnableConfig):
+    &quot;&quot;&quot;LangGraph graph factory; keep the signature compatible with LangGraph Server.&quot;&quot;&quot;
+    return assemble_lead_agent(config).graph
+
+
+def assemble_lead_agent(
+    config: RunnableConfig,
+    *,
+    app_config: AppConfig | None = None,
+) -&gt; LeadAgentAssembly:
+    &quot;&quot;&quot;Return the compiled lead graph together with its assembly descriptor.
+
+    Gateway workers use this explicit assembly result so what the agent was
+    built from does not have to be recovered from LangGraph private runtime
+    keys or mutable graph attributes. ``make_lead_agent`` remains the
+    graph-only LangGraph Server ABI declared in ``langgraph.json``.
+    &quot;&quot;&quot;
+    runtime_config = _get_runtime_config(config)
+    runtime_app_config = app_config or runtime_config.get(&quot;app_config&quot;)
+    if not isinstance(runtime_app_config, AppConfig):
+        runtime_app_config = get_app_config()
+    # Mode selection precedence, pinned by test_checkpoint_mode.py:
+    # - First freeze: the app config owns the process mode; a client-supplied
+    #   configurable key is ignored so a direct LangGraph request cannot
+    #   reconfigure (or crash) a fresh process.
+    # - Once frozen: an internally injected key (run worker / gateway) or the
+    #   app config must match the frozen mode; ``freeze_checkpoint_channel_mode``
+    #   fails closed on any mismatch, so neither a forged key nor a config.yaml
+    #   change can silently reconfigure the process.
+    frozen_mode = frozen_checkpoint_channel_mode()
+    if frozen_mode is None:
+        requested_mode = runtime_app_config.database.checkpoint_channel_mode
+    else:
+        requested_mode = (config.get(&quot;configurable&quot;, {}) or {}).get(
+            INTERNAL_CHECKPOINT_MODE_KEY,
+            runtime_app_config.database.checkpoint_channel_mode,
+        )
+    mode = freeze_checkpoint_channel_mode(requested_mode)
+    # The snapshot cadence travels with the mode: restart-required, frozen
+    # from the app config, and deliberately not client-injectable (a forged
+    # configurable key must not recompile the channel table either).
+    freeze_checkpoint_snapshot_frequency(runtime_app_config.database.checkpoint_delta.snapshot_frequency)
+    inject_checkpoint_mode(config, mode)
+    return _assemble_lead_agent(config, app_config=runtime_app_config)
+
+
+def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
+    &quot;&quot;&quot;Internal graph-only entry point.
+
+    Kept as a graph-returning wrapper because callers inside the harness (and
+    the model-resolution tests) want the compiled graph without the mode
+    freeze that :func:`assemble_lead_agent` performs.
+    &quot;&quot;&quot;
+    return _assemble_lead_agent(config, app_config=app_config).graph
+
+
+def _complete_assembly(
+    *,
+    config: RunnableConfig,
+    graph: Any,
+    namespace: str,
+    agent_name: str,
+    requested_model: str | None,
+    effective_model: str,
+    model_config: object,
+    model_overrides: dict[str, object] | None = None,
+    thinking_enabled: bool,
+    reasoning_effort: object,
+    rendered_base_prompt: str,
+    tools: list[object],
+    middlewares: list[object],
+    deferred_names: frozenset[str],
+    enabled_skills: list[object],
+    effective_policies: dict[str, object],
+) -&gt; LeadAgentAssembly:
+    &quot;&quot;&quot;Describe the finished graph and hand the description to observers.
+
+    The recursion limit is folded in here rather than at either call site: it
+    is a per-invocation budget the Gateway clamps, so it belongs to the
+    assembly even though nothing inside the factory chose it.
+
+    Building the descriptor hashes every tool&#x27;s description and JSON schema
+    and probes every middleware — real work on every assembly. Skipped
+    entirely when no observer is registered to receive it, mirroring
+    ``notify_agent_assembled``&#x27;s own zero-observer fast path.
+    &quot;&quot;&quot;
+    from deerflow.extensions import get_agent_build_extensions
+
+    resolved_extensions = get_agent_build_extensions()
+    if not resolved_extensions.has_agent_assembly_observers:
+        return LeadAgentAssembly(graph=graph, descriptor=None)
+
+    from deerflow.agents.assembly_descriptor import build_assembly_descriptor
+    from deerflow.extensions.notify import notify_agent_assembled
+
+    resolved_policies = dict(effective_policies)
+    resolved_policies.setdefault(
+        &quot;recursion_limit&quot;,
+        config.get(&quot;recursion_limit&quot;, &quot;framework-default&quot;),
+    )
+    descriptor = build_assembly_descriptor(
+        namespace=namespace,
+        agent_name=agent_name,
+        requested_model=requested_model,
+        effective_model=effective_model,
+        model_config=model_config,
+        model_overrides=model_overrides,
+        thinking_enabled=thinking_enabled,
+        reasoning_effort=reasoning_effort,
+        rendered_base_prompt=rendered_base_prompt,
+        tools=tools,
+        middlewares=middlewares,
+        deferred_names=deferred_names,
+        enabled_skills=enabled_skills,
+        effective_policies=resolved_policies,
+    )
+    notify_agent_assembled(descriptor, resolved_extensions)
+    return LeadAgentAssembly(graph=graph, descriptor=descriptor)
+
+
+def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -&gt; LeadAgentAssembly:
+    # Lazy import to avoid circular dependency
+    from deerflow.tools import get_available_tools
+    from deerflow.tools.builtins import setup_agent, update_agent
+    from deerflow.tools.builtins.tool_search import assemble_deferred_tools, build_mcp_routing_middleware, get_mcp_routing_hints_prompt_section
+
+    cfg = _get_runtime_config(config)
+    resolved_app_config = app_config
+    mode = (config.get(&quot;configurable&quot;, {}) or {}).get(
+        INTERNAL_CHECKPOINT_MODE_KEY,
+        resolved_app_config.database.checkpoint_channel_mode,</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- SECTION 3: 14+ 阶段 Middleware 管道 -->
+      <section id="middleware-pipeline" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h2 class="section-title">3. 14+ 阶段 Middleware 管道与生命周期深度剖析</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          DeerFlow 的中间件模型并非传统的对称洋葱圈，而是针对多轮 Tool-Call 对话高度优化的<strong>单向管道拦截体系</strong>。
+          LangGraph <code>create_agent</code> 遵循：<strong><code>before_*</code> 按照列表正序 (0 ➔ N) 执行，<code>after_*</code> 按照列表反序 (N ➔ 0) 执行</strong>。
+        </p>
+
+        <!-- Diagram 3: Middleware Pipeline Flow -->
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <button onclick="zoomDiagram(this, 1.15)" title="放大"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="zoomDiagram(this, 0.85)" title="缩小"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="resetDiagram(this)" title="重置"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+graph TB
+    Start(["用户请求进入 invoke / astream"]) --> TD
+
+    subgraph BA ["<b>[阶段 1] before_agent</b> (正序执行 0 ➔ N)"]
+        direction TB
+        TD["[0] ThreadDataMiddleware<br/>创建隔离目录 (workspace/uploads/outputs)"]
+        UL["[1] UploadsMiddleware<br/>扫描上传文件并注入上下文提示"]
+        SB["[2] SandboxMiddleware<br/>向 Provider 申领/初始化沙箱实例"]
+        LD_BA["[12] LoopDetectionMiddleware<br/>清理同 thread 旧 run 的残留 warnings"]
+        TD --> UL --> SB --> LD_BA
+    end
+
+    subgraph BM ["<b>[阶段 2] before_model</b> (每轮循环 正序 0 ➔ N)"]
+        direction TB
+        SM["[6] SummarizationMiddleware<br/>超限历史消息自动总结与压缩"]
+        TODO_BM["[7] TodoMiddleware (Plan Mode)<br/>加载当前待办列表状态"]
+        VI["[10] ViewImageMiddleware<br/>解析并注入视觉模型的图片 Base64"]
+        SM --> TODO_BM --> VI
+    end
+
+    subgraph WM ["<b>[阶段 3] wrap_model_call</b> (模型调用包装 外层 ➔ 内层)"]
+        direction TB
+        IS["InputSanitization<br/>清理 Prompt 注入攻击标签"]
+        TOB["ToolOutputBudget<br/>截断超大工具返回字符"]
+        TRS["ToolResultSanitization<br/>对 Web 检索结果做二次清洗"]
+        DTC["[3] DanglingToolCall<br/>补齐悬空 ToolMessage 避免模型报错"]
+        DC["DynamicContext<br/>注入动态时间 & 记忆提醒 (前缀缓存优化)"]
+        DUR["DurableContext<br/>注入委托账本 (Delegation Ledger)"]
+        DTF["DeferredToolFilter<br/>隐藏未激活的超大 MCP 工具模式"]
+        SMC["SystemMessageCoalescing<br/>合并多个系统消息为首部单条 (兼容严格后端)"]
+        LD_WM["[12] LoopDetection<br/>安全注入排队 warning 到末尾 HumanMessage"]
+
+        IS --> TOB --> TRS --> DTC --> DC --> DUR --> DTF --> SMC --> LD_WM
+    end
+
+    LD_BA --> SM
+    VI --> IS
+    LD_WM --> LLM["<b>🧠 LLM MODEL 推理生成</b>"]
+
+    subgraph AM ["<b>[阶段 4] after_model</b> (反序拦截 N ➔ 0)"]
+        direction TB
+        CM_AM["[13] ClarificationMiddleware<br/>检测 ask_clarification 并剔除兄弟工具调用"]
+        SFR["SafetyFinishReason<br/>模型触发安全审查时清空 tool_calls"]
+        MLF["ModelLengthFinishReason<br/>标记输出达到最大 Token 截断"]
+        TRM["TerminalResponse<br/>空回复兜底重试与错误占位"]
+        LD_AM["[12] LoopDetection<br/>哈希检测循环调用，超限入队 warning / 硬拦截"]
+        SL["[11] SubagentLimit<br/>截断超出配额的并发 subagent task"]
+        TI["[8] TitleMiddleware<br/>首轮对话异步触发自动生成标题"]
+        TODO_AM["[7] TodoMiddleware<br/>同步模型产生的待办状态更新"]
+
+        CM_AM --> SFR --> MLF --> TRM --> LD_AM --> SL --> TI --> TODO_AM
+    end
+
+    LLM --> CM_AM
+
+    subgraph TC ["<b>[工具调用分支] wrap_tool_call</b>"]
+        direction TB
+        CM_TC["[13] Clarification<br/>拦截 ask_clarification ➔ Command(goto=END)"]
+        AUTHZ["[4] Authorization/Guardrails<br/>RBAC 权限策略与黑白名单校验"]
+        SA["SandboxAudit<br/>沙箱命令高危模式审计"]
+        RBW["ReadBeforeWrite<br/>写文件前必须先读校验"]
+        TP["ToolProgress<br/>工具实时进度事件广播"]
+        TEH["[5] ToolErrorHandling<br/>异常捕获与 deerflow_tool_meta 标记"]
+        TR["ToolReceipt<br/>生成工具调用数字凭证账本"]
+
+        CM_TC --> AUTHZ --> SA --> RBW --> TP --> TEH --> TR
+    end
+
+    subgraph AA ["<b>[阶段 5] after_agent</b> (结束阶段 反序 N ➔ 0)"]
+        direction TB
+        LD_CLEAN["[12] LoopDetection<br/>清理当前 run 未消费的 pending warnings"]
+        MEM["[9] MemoryMiddleware<br/>异步触发长期事实提取并入队 DeerMem"]
+        SBR["[2] SandboxMiddleware<br/>释放沙箱资源与临时挂载点"]
+
+        LD_CLEAN --> MEM --> SBR
+    end
+
+    TODO_AM -->|有 tool_calls 且非 Clarification| CM_TC
+    CM_TC -->|工具执行完成| BM
+    TODO_AM -->|无 tool_calls 或已完成| LD_CLEAN
+    CM_AM -.->|命中 ask_clarification| END_NODE(["中断退出，等待用户回复表单"])
+    SBR --> FinalEnd(["🏁 Run 成功结束，返回结果"])
+            </div>
+          </div>
+        </div>
+
+        <!-- Middleware Table -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-list-check" style="color: var(--accent-blue);"></i> 14 个核心 Middleware 职责与执行钩子对照表</div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Middleware 名称</th>
+                  <th>执行阶段 (Hooks)</th>
+                  <th>核心职责与执行逻辑</th>
+                  <th>硬依赖/位置约束</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>0</strong></td>
+                  <td><strong>ThreadDataMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-agent">before_agent</span></td>
+                  <td>初始化线程独立物理与虚拟目录 (<code>workspace</code>, <code>uploads</code>, <code>outputs</code>)。</td>
+                  <td>必须在 Sandbox 之前</td>
+                </tr>
+                <tr>
+                  <td><strong>1</strong></td>
+                  <td><strong>UploadsMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-agent">before_agent</span></td>
+                  <td>扫描线程 <code>uploads/</code> 目录，将文件列表与虚拟路径注入消息前缀。</td>
+                  <td>位于 ThreadData 之后</td>
+                </tr>
+                <tr>
+                  <td><strong>2</strong></td>
+                  <td><strong>SandboxMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-agent">before_agent</span> <span class="hook-badge hook-after-agent">after_agent</span></td>
+                  <td><code>before_agent</code> 向 Provider 申领沙箱，<code>after_agent</code> 释放容器资源，形成洋葱对称。</td>
+                  <td>成对执行</td>
+                </tr>
+                <tr>
+                  <td><strong>3</strong></td>
+                  <td><strong>DanglingToolCallMiddleware</strong></td>
+                  <td><span class="hook-badge hook-wrap-model">wrap_model_call</span></td>
+                  <td>修复悬空的 tool_call（补充 synthetic error ToolMessage），剔除孤儿 ToolMessage，防止严格模型 400 报错。</td>
+                  <td>必须位于 wrap_model 外层</td>
+                </tr>
+                <tr>
+                  <td><strong>4</strong></td>
+                  <td><strong>Guardrail / Authorization</strong></td>
+                  <td><span class="hook-badge hook-wrap-tool">wrap_tool_call</span></td>
+                  <td>RBAC 权限决策器：校验当前用户是否有权调用特定工具；阻止未授权命令。</td>
+                  <td>包裹在工具执行外层</td>
+                </tr>
+                <tr>
+                  <td><strong>5</strong></td>
+                  <td><strong>ToolErrorHandlingMiddleware</strong></td>
+                  <td><span class="hook-badge hook-wrap-tool">wrap_tool_call</span></td>
+                  <td>捕获工具执行异常并标准化为 ToolMessage，并在 meta 中标记 <code>deerflow_tool_meta</code>。</td>
+                  <td>内层兜底</td>
+                </tr>
+                <tr>
+                  <td><strong>6</strong></td>
+                  <td><strong>SummarizationMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-model">before_model</span></td>
+                  <td>历史消息到达 Token 阈值时触发自动摘要压缩，保留近期轮次。</td>
+                  <td>模型调用前</td>
+                </tr>
+                <tr>
+                  <td><strong>7</strong></td>
+                  <td><strong>TodoMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-model">before_model</span> <span class="hook-badge hook-after-model">after_model</span></td>
+                  <td>Plan Mode 下维护任务清单，追踪多步骤任务执行进度与状态更新。</td>
+                  <td>配置开启生效</td>
+                </tr>
+                <tr>
+                  <td><strong>8</strong></td>
+                  <td><strong>TitleMiddleware</strong></td>
+                  <td><span class="hook-badge hook-after-model">after_model</span></td>
+                  <td>在首次对话后，后台轻量模型异步生成符合会话主题的标题。</td>
+                  <td>仅在首轮触发</td>
+                </tr>
+                <tr>
+                  <td><strong>9</strong></td>
+                  <td><strong>MemoryMiddleware</strong></td>
+                  <td><span class="hook-badge hook-after-agent">after_agent</span></td>
+                  <td>检测会话中的偏好、决策、事实，异步防抖入队 DeerMem 长期记忆库。</td>
+                  <td>Run 结束后触发</td>
+                </tr>
+                <tr>
+                  <td><strong>10</strong></td>
+                  <td><strong>ViewImageMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-model">before_model</span></td>
+                  <td>将 <code>view_image</code> 查看的文件读取为 Base64 并组装为 Vision 消息载荷。</td>
+                  <td>仅视觉模型加载</td>
+                </tr>
+                <tr>
+                  <td><strong>11</strong></td>
+                  <td><strong>SubagentLimitMiddleware</strong></td>
+                  <td><span class="hook-badge hook-after-model">after_model</span></td>
+                  <td>检查当前轮次派生的 <code>task</code> 工具调用，对超出并发与总量上限的任务执行拦截截断。</td>
+                  <td>位于 Model 之后</td>
+                </tr>
+                <tr>
+                  <td><strong>12</strong></td>
+                  <td><strong>LoopDetectionMiddleware</strong></td>
+                  <td><span class="hook-badge hook-before-agent">before_agent</span> <span class="hook-badge hook-wrap-model">wrap_model</span> <span class="hook-badge hook-after-model">after_model</span> <span class="hook-badge hook-after-agent">after_agent</span></td>
+                  <td>滑动窗口哈希比对工具调用。达到 warning 阈值入队提醒；达到 hard_limit 强制剥离 tool_calls 终止死循环。</td>
+                  <td>跨多个生命周期钩子</td>
+                </tr>
+                <tr>
+                  <td><strong>13</strong></td>
+                  <td><strong>ClarificationMiddleware</strong></td>
+                  <td><span class="hook-badge hook-after-model">after_model</span> <span class="hook-badge hook-wrap-tool">wrap_tool_call</span></td>
+                  <td>拦截 <code>ask_clarification</code>，丢弃同批次兄弟工具，返回 <code>Command(goto=END)</code> 中断当前执行并展示用户表单。</td>
+                  <td><strong>必须位于列表最末尾</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Code Block 3: Clarification & LoopDetection -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：ClarificationMiddleware 中断与表单标准化</div>
+          <details class="code-details" open>
+            <summary>查看核心源码 (ClarificationMiddleware)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/agents/middlewares/clarification_middleware.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class ClarificationMiddleware(AgentMiddleware[ClarificationMiddlewareState]):
+    &quot;&quot;&quot;Intercepts clarification tool calls and interrupts execution to present questions to the user.
+
+    When the model calls the `ask_clarification` tool, this middleware:
+    1. Drops any sibling tool calls from the same AIMessage (``after_model``)
+       so they cannot execute before the user answers. langchain&#x27;s
+       ``return_direct`` router inspects all client-side tool calls of the
+       last AIMessage and routes to END only when every one is
+       ``return_direct``. A mixed ``[ask_clarification, bash]`` batch would
+       both run the siblings *and* loop back to the model. Malformed
+       ``ask_clarification`` arguments land in ``invalid_tool_calls`` while a
+       valid sibling stays in ``tool_calls``; that still counts as a stop
+       signal and the siblings are dropped.
+    2. Intercepts the remaining ``ask_clarification`` call before execution
+    3. Extracts the clarification question and metadata
+    4. Formats a user-friendly message
+    5. Returns a Command that interrupts execution and presents the question
+    6. Waits for user response before continuing
+
+    This replaces the tool-based approach where clarification continued the conversation flow.
+    &quot;&quot;&quot;
+
+    state_schema = ClarificationMiddlewareState
+
+    def _stable_message_id(self, tool_call_id: str, formatted_message: str) -&gt; str:
+        &quot;&quot;&quot;Build a deterministic message ID so retried clarification calls replace, not append.&quot;&quot;&quot;
+        if tool_call_id:
+            return f&quot;clarification:{tool_call_id}&quot;
+        digest = sha256(formatted_message.encode(&quot;utf-8&quot;)).hexdigest()[:16]
+        return f&quot;clarification:{digest}&quot;
+
+    def _normalize_options(self, raw_options: Any) -&gt; list[str]:
+        &quot;&quot;&quot;Normalize tool-provided options into displayable string values.&quot;&quot;&quot;
+        options = raw_options
+
+        # Some models (e.g. Qwen3-Max) serialize array parameters as JSON strings
+        # instead of native arrays. Deserialize and normalize so `options`
+        # is always a list for the rendering logic below.
+
+    # ... [表单标准化与字段解析] ...
+
+        valid sibling remains executable on ``tool_calls``. Treat that
+        malformed call as the same stop signal: drop the siblings so the
+        tools node cannot run them. With no remaining ``tool_calls``,
+        ``create_agent`` routes to END.
+
+        ``disable_clarification`` skips this rewrite: those runs must keep the
+        sibling actions, because the clarification itself is turned into a
+        &quot;proceed&quot; ToolMessage instead of an interrupt.
+        &quot;&quot;&quot;
+        if self._clarification_disabled(runtime):
+            return None
+
+        messages = state.get(&quot;messages&quot;, [])
+        if not messages:
+            return None
+        last = messages[-1]
+        if not isinstance(last, AIMessage):
+            return None
+
+        tool_calls = list(last.tool_calls or [])
+        invalid_tool_calls = [tc for tc in (getattr(last, &quot;invalid_tool_calls&quot;, None) or []) if isinstance(tc, dict)]
+        clarification_calls = [tc for tc in tool_calls if tc.get(&quot;name&quot;) == ASK_CLARIFICATION_TOOL_NAME]
+        invalid_clarification_calls = [tc for tc in invalid_tool_calls if tc.get(&quot;name&quot;) == ASK_CLARIFICATION_TOOL_NAME]
+        if not clarification_calls and not invalid_clarification_calls:
+            return None
+
+        sibling_calls = [tc for tc in tool_calls if tc.get(&quot;name&quot;) != ASK_CLARIFICATION_TOOL_NAME]
+        if not sibling_calls:
+            return None
+
+        dropped_names = [str(tc.get(&quot;name&quot;) or &quot;unknown&quot;) for tc in sibling_calls]
+        logger.warning(
+            &quot;ask_clarification was emitted with %d sibling tool call(s); dropping %s so the turn can interrupt&quot;,
+            len(dropped_names),
+            dropped_names,
+        )
+
+        kept_for_content = clarification_calls + invalid_clarification_calls
+        kept_ids = {tc[&quot;id&quot;] for tc in kept_for_content if isinstance(tc.get(&quot;id&quot;), str) and tc[&quot;id&quot;]}
+        kept_names = {str(tc[&quot;name&quot;]) for tc in kept_for_content if isinstance(tc.get(&quot;name&quot;), str) and tc[&quot;name&quot;]}
+        new_content = _filter_content_tool_use(last.content, kept_ids, kept_names)
+        patched = clone_ai_message_with_tool_calls(
+            last,
+            clarification_calls,
+            content=new_content if new_content is not last.content else None,
+        )
+        return {&quot;messages&quot;: [patched]}
+
+    def _handle_disabled_clarification(self, request: ToolCallRequest) -&gt; ToolMessage:
+        &quot;&quot;&quot;Suppress a clarification and tell the agent to proceed.
+
+        Returns a plain ToolMessage (not a ``Command(goto=END)``) so the
+        agent loop continues instead of ending — the agent receives this
+        as the tool result and generates again, ideally acting rather
+        than re-asking.
+        &quot;&quot;&quot;
+        tool_call_id = request.tool_call.get(&quot;id&quot;, &quot;&quot;)
+        logger.info(&quot;ask_clarification suppressed (disable_clarification set); instructing agent to proceed&quot;)
+        return ToolMessage(
+            id=self._stable_message_id(tool_call_id, &quot;proceed-without-clarification&quot;),
+            content=(
+                &quot;Clarification is disabled in this context — the human is not present &quot;
+                &quot;to answer synchronously. Do not ask for confirmation. Proceed with your &quot;
+                &quot;best judgment, carry out the requested action, and state any assumptions &quot;
+                &quot;you made in your final response.&quot;
+            ),
+            tool_call_id=tool_call_id,
+            name=ASK_CLARIFICATION_TOOL_NAME,
+        )
+
+    def _handle_clarification(self, request: ToolCallRequest) -&gt; Command:
+        &quot;&quot;&quot;Handle clarification request and return command to interrupt execution.
+
+        Args:
+            request: Tool call request
+
+        Returns:
+            Command that interrupts execution with the formatted clarification message
+        &quot;&quot;&quot;
+        # Extract clarification arguments
+        args = request.tool_call.get(&quot;args&quot;, {})
+        question = args.get(&quot;question&quot;, &quot;&quot;)
+
+        logger.info(&quot;Intercepted clarification request&quot;)
+        logger.debug(&quot;Clarification question: %s&quot;, question)
+
+        # Normalize form fields once; both the text fallback and the payload
+        # consume the same result.
+        fields = self._normalize_fields(args.get(&quot;fields&quot;))
+
+        # Format the clarification message
+        formatted_message = self._format_clarification_message(args, fields=fields)
+
+        # Get the tool call ID
+        tool_call_id = request.tool_call.get(&quot;id&quot;, &quot;&quot;)
+
+        request_id = self._stable_message_id(tool_call_id, formatted_message)
+        human_input_payload = self._build_human_input_payload(args, tool_call_id=tool_call_id, request_id=request_id, fields=fields)
+
+        # Create a ToolMessage with the formatted question
+        # This will be added to the message history
+        tool_message = ToolMessage(
+            id=request_id,
+            content=formatted_message,
+            tool_call_id=tool_call_id,
+            name=ASK_CLARIFICATION_TOOL_NAME,
+            artifact={&quot;human_input&quot;: human_input_payload},
+        )
+
+        # Return a Command that:
+        # 1. Adds the formatted tool message
+        # 2. Interrupts execution by going to __end__
+        # Note: We don&#x27;t add an extra AIMessage here - the frontend will detect
+        # and display ask_clarification tool messages directly
+        return Command(
+            update={&quot;messages&quot;: [tool_message]},
+            goto=END,
+        )
+
+    @override
+    def wrap_tool_call(
+        self,
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], ToolMessage | Command],
+    ) -&gt; ToolMessage | Command:
+        &quot;&quot;&quot;Intercept ask_clarification tool calls and interrupt execution (sync version).
+
+        Args:
+            request: Tool call request
+            handler: Original tool execution handler
+
+        Returns:
+            Command that interrupts execution with the formatted clarification message
+        &quot;&quot;&quot;
+        # Check if this is an ask_clarification tool call
+        if request.tool_call.get(&quot;name&quot;) != ASK_CLARIFICATION_TOOL_NAME:
+            # Not a clarification call, execute normally
+            return handler(request)
+
+        if self._is_disabled(request):
+            return self._handle_disabled_clarification(request)</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：LoopDetectionMiddleware 循环检测与排队注入</div>
+          <details class="code-details">
+            <summary>查看核心源码 (LoopDetectionMiddleware)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/agents/middlewares/loop_detection_middleware.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
+    &quot;&quot;&quot;Detects and breaks repetitive tool call loops.
+
+    Threshold parameters are validated upstream by :class:`LoopDetectionConfig`;
+    construct via :meth:`from_config` to ensure values pass Pydantic validation.
+
+    Args:
+        warn_threshold: Number of identical tool call sets before injecting
+            a warning message. Default: 3.
+        hard_limit: Number of identical tool call sets before stripping
+            tool_calls entirely. Default: 5.
+        window_size: Size of the sliding window for tracking calls.
+            Default: 20.
+        max_tracked_threads: Maximum number of threads to track before
+            evicting the least recently used. Default: 100.
+        tool_freq_warn: Maximum number of same-tool-type calls within a
+            sliding window of ``_tool_freq_window`` before injecting a
+            frequency warning. Catches cross-file read loops that
+            hash-based detection misses. Default: 30 (within a window
+            of 50).
+        tool_freq_hard_limit: Maximum number of same-tool-type calls within
+            a sliding window of ``_tool_freq_window`` before forcing a
+            stop. Default: 50 (within a window of 50).
+        tool_freq_overrides: Per-tool overrides for frequency thresholds,
+            keyed by tool name. Each value is a ``(warn, hard_limit)`` tuple
+            that replaces ``tool_freq_warn`` / ``tool_freq_hard_limit`` for
+            that specific tool. Tools not listed here fall back to the global
+            thresholds. Useful for raising limits on intentionally
+            high-frequency tools (e.g. ``bash`` in batch pipelines) without
+            weakening protection on all other tools. Default: ``None``
+            (no overrides).
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        warn_threshold: int = _DEFAULT_WARN_THRESHOLD,
+        hard_limit: int = _DEFAULT_HARD_LIMIT,
+        window_size: int = _DEFAULT_WINDOW_SIZE,
+        max_tracked_threads: int = _DEFAULT_MAX_TRACKED_THREADS,
+        tool_freq_warn: int = _DEFAULT_TOOL_FREQ_WARN,
+        tool_freq_hard_limit: int = _DEFAULT_TOOL_FREQ_HARD_LIMIT,
+        tool_freq_overrides: dict[str, tuple[int, int]] | None = None,
+    ):
+        super().__init__()
+        self.warn_threshold = warn_threshold
+        self.hard_limit = hard_limit
+        self.window_size = window_size
+        self.max_tracked_threads = max_tracked_threads
+        self.tool_freq_warn = tool_freq_warn
+        self.tool_freq_hard_limit = tool_freq_hard_limit
+        self._tool_freq_overrides: dict[str, tuple[int, int]] = tool_freq_overrides or {}
+        # Layer 2&#x27;s windowed frequency count can never exceed the deque length,
+        # so the deque MUST be at least as long as the largest hard limit it is
+        # compared against — otherwise the hard-stop branch is dead code. Do NOT
+        # reuse Layer 1&#x27;s ``window_size`` (which is unrelated and defaults below
+        # the freq thresholds, e.g. 20 &lt; hard 50); size the frequency window to
+        # the largest hard limit in play (global + every per-tool override) so a
+        # tight burst can actually reach it while spread-out calls still decay
+        # out of the window. Warn thresholds are intentionally excluded: a sane
+        # config enforces warn &lt;= hard (covered by sizing to hard), and a misconfig
+        # with warn &gt; hard would hard-stop first anyway, so an unreachable warn
+        # is harmless and must not inflate the window.
+        self._tool_freq_window = max(
+            self.window_size,
+            self.tool_freq_hard_limit,
+            *(hard for _, hard in self._tool_freq_overrides.values()),
+        )
+        self._lock = threading.Lock()
+        self._history: OrderedDict[str, list[str]] = OrderedDict()
+        self._warned: dict[str, set[str]] = defaultdict(set)
+        # Windowed per-tool-type frequency: recent tool names per thread,
+        # trimmed to ``window_size`` so the count decays instead of growing
+        # monotonically (replaces the old monotonic ``_tool_freq`` integer).
+        self._tool_name_history: defaultdict[str, deque[str]] = defaultdict(deque)
+        # Per-thread Counter mirroring the deque so freq_count is O(1) instead
+        # of scanning the whole window on every tool call. A single high
+        # per-tool override (e.g. bash: {hard_limit: 1000}) inflates the window
+        # globally, so the scan would cost 1000 per call for every tool; Counter
+        # increments on append and decrements on popleft.
+        self._tool_name_counter: defaultdict[str, Counter[str]] = defaultdict(Counter)
+        # Per-thread set of tool names already warned about in Layer 2, so a
+        # frequency warning is enqueued once rather than on every subsequent
+        # call. Cleared per name when the windowed count decays back below the
+        # warn threshold, mirroring the hash-layer ``_warned`` pruning.
+        self._tool_freq_warned: dict[str, set[str]] = defaultdict(set)
+        # Per-thread/run queue of warnings to inject at the next model call.
+        # Populated by ``after_model`` (detection) and drained by
+        # ``wrap_model_call`` (injection); see module docstring.
+        self._pending_warnings: dict[tuple[str, str], list[str]] = defaultdict(list)
+        self._pending_warning_touch_order: OrderedDict[tuple[str, str], None] = OrderedDict()
+        self._max_pending_warning_keys = max(1, self.max_tracked_threads * 2)
+        # Stop reason set when a hard-stop fires (#3875 Phase 2). Keyed by run_id
+        # (matching ``TokenBudgetMiddleware``) and bounded — the lead agent&#x27;s
+        # middleware instance is long-lived across many runs, so without a cap
+        # an entry would accumulate for every looped lead run. Intentionally NOT
+        # cleared by ``after_agent``/``_clear_current_run_pending_warnings`` so
+        # the subagent executor can consume it after the run returns; ``reset()``
+        # still drops it.
+        self._stop_reason: BoundedDict[str, str] = BoundedDict(1000)
+
+    def release_policy_parameters(self) -&gt; dict[str, object]:
+        return {
+            &quot;warn_threshold&quot;: self.warn_threshold,
+            &quot;hard_limit&quot;: self.hard_limit,
+            &quot;window_size&quot;: self.window_size,
+            &quot;max_tracked_threads&quot;: self.max_tracked_threads,
+            &quot;tool_freq_warn&quot;: self.tool_freq_warn,
+            &quot;tool_freq_hard_limit&quot;: self.tool_freq_hard_limit,
+            &quot;tool_freq_overrides&quot;: self._tool_freq_overrides,
+        }
+
+    @classmethod
+    def from_config(cls, config: LoopDetectionConfig) -&gt; LoopDetectionMiddleware:
+        &quot;&quot;&quot;Construct from a Pydantic-validated config, trusting its validation.&quot;&quot;&quot;
+        return cls(
+            warn_threshold=config.warn_threshold,
+            hard_limit=config.hard_limit,
+            window_size=config.window_size,
+            max_tracked_threads=config.max_tracked_threads,
+            tool_freq_warn=config.tool_freq_warn,
+            tool_freq_hard_limit=config.tool_freq_hard_limit,
+            tool_freq_overrides={name: (o.warn, o.hard_limit) for name, o in config.tool_freq_overrides.items()},
+        )</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：DanglingToolCallMiddleware 悬空与孤儿修复</div>
+          <details class="code-details">
+            <summary>查看核心源码 (DanglingToolCallMiddleware)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/agents/middlewares/dangling_tool_call_middleware.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class DanglingToolCallMiddleware(AgentMiddleware[AgentState]):
+    &quot;&quot;&quot;Inserts placeholder ToolMessages for dangling tool calls and drops orphan
+    ToolMessages (tool results whose originating AIMessage tool_call is gone).
+
+    Scans the message history for:
+    - AIMessages whose tool_calls lack corresponding ToolMessages, and injects
+      synthetic error responses immediately after the offending AIMessage
+    - ToolMessages with no matching AIMessage tool_call (orphans), and drops
+      them so strict OpenAI-compatible backends do not reject the request
+    &quot;&quot;&quot;
+
+    @staticmethod
+    def _message_tool_calls(msg) -&gt; list[dict]:
+        &quot;&quot;&quot;Return normalized tool calls from structured fields or raw provider payloads.
+
+        LangChain stores malformed provider function calls in ``invalid_tool_calls``.
+        They do not execute, but provider adapters may still serialize enough of
+        the call id/name back into the next request that strict OpenAI-compatible
+        validators expect a matching ToolMessage. Treat them as dangling calls so
+        the next model request stays well-formed and the model sees a recoverable
+        tool error instead of another provider 400.
+        &quot;&quot;&quot;
+        normalized: list[dict] = []
+
+        tool_calls = getattr(msg, &quot;tool_calls&quot;, None) or []
+        for tool_call in tool_calls:
+            if not isinstance(tool_call, dict):
+                logger.debug(&quot;Skipping malformed non-dict tool_call in AIMessage: %r&quot;, tool_call)
+                continue
+            original_name = tool_call.get(&quot;name&quot;)
+            normalized_call = dict(tool_call)
+            normalized_call[&quot;name&quot;] = _normalize_tool_name(original_name)
+            if _has_invalid_tool_name(original_name):
+                normalized_call[&quot;invalid_tool_name&quot;] = True
+            normalized.append(normalized_call)
+
+        raw_tool_calls = (getattr(msg, &quot;additional_kwargs&quot;, None) or {}).get(&quot;tool_calls&quot;) or []
+        # The raw payload is a fallback serialization of the same calls: the
+        # OpenAI serializer reaches for it only once BOTH structured views are
+        # empty (mirrors the gating in _normalize_tool_call_ids).  Collecting
+        # it while invalid_tool_calls is non-empty would count the same call
+        # twice and emit two ToolMessages for one id — the exact duplicate-id
+        # shape strict providers reject.
+        if not tool_calls and not getattr(msg, &quot;invalid_tool_calls&quot;, None):
+            for raw_tc in raw_tool_calls:
+                if not isinstance(raw_tc, dict):
+                    continue
+
+                function = raw_tc.get(&quot;function&quot;)
+                name = raw_tc.get(&quot;name&quot;)
+                if not name and isinstance(function, dict):
+                    name = function.get(&quot;name&quot;)
+
+                args = raw_tc.get(&quot;args&quot;, {})
+                if not args and isinstance(function, dict):
+                    parsed_args = _parse_json_object(function.get(&quot;arguments&quot;))
+                    args = parsed_args if parsed_args is not None else {}
+
+                normalized_call = {
+                    &quot;id&quot;: raw_tc.get(&quot;id&quot;),
+                    &quot;name&quot;: _normalize_tool_name(name),
+                    &quot;args&quot;: args if isinstance(args, dict) else {},
+                }
+                if _has_invalid_tool_name(name):
+                    normalized_call[&quot;invalid_tool_name&quot;] = True
+                normalized.append(normalized_call)
+
+        for invalid_tc in getattr(msg, &quot;invalid_tool_calls&quot;, None) or []:
+            if not isinstance(invalid_tc, dict):
+                continue
+            original_name = invalid_tc.get(&quot;name&quot;)
+            normalized_call = {
+                &quot;id&quot;: invalid_tc.get(&quot;id&quot;),
+                &quot;name&quot;: _normalize_tool_name(original_name),
+                &quot;args&quot;: {},
+                &quot;invalid&quot;: True,
+                &quot;error&quot;: invalid_tc.get(&quot;error&quot;),
+            }
+            if _has_invalid_tool_name(original_name):
+                normalized_call[&quot;invalid_tool_name&quot;] = True
+            normalized.append(normalized_call)
+
+        return normalized
+
+    @staticmethod
+    def _synthetic_tool_message_content(tool_call: dict) -&gt; str:
+        if tool_call.get(&quot;invalid_tool_name&quot;):
+            return f&quot;[{_EMPTY_TOOL_NAME_ERROR} Use one of the available tool names when retrying.]&quot;
+        if tool_call.get(&quot;invalid&quot;):
+            name = tool_call.get(&quot;name&quot;)
+            error = tool_call.get(&quot;error&quot;)
+            error_text = error[:_MAX_RECOVERY_ERROR_DETAIL_LEN] if isinstance(error, str) and error else &quot;&quot;
+            # Workaround for issue #2894: malformed write_file calls can carry huge Markdown
+            # payloads in invalid tool-call args. Keep recovery guidance actionable without
+            # echoing large or malformed content back to the model.
+            if name == &quot;write_file&quot;:
+                details = f&quot; Parser error: {error_text}&quot; if error_text else &quot;&quot;
+                return (
+                    &quot;[write_file failed before execution: the tool-call arguments were not valid JSON, &quot;
+                    &quot;so no file was written. This often happens when the model tries to write a very &quot;
+                    &quot;large Markdown file in a single tool call, especially when `content` contains &quot;
+                    &quot;unescaped quotes, inline JSON, backslashes, or code fences. Do not retry the same &quot;
+                    &quot;large `write_file` payload for this artifact; provide the report/content directly &quot;
+                    &quot;as normal assistant text in your next response. If a file write is still needed &quot;
+                    f&quot;later, split the file into smaller sections instead of one large payload.{details}]&quot;
+                )
+            if error_text:
+                return f&quot;[Tool call could not be executed because its arguments were invalid: {error_text}]&quot;
+            return &quot;[Tool call could not be executed because its arguments were invalid.]&quot;
+        return &quot;[Tool call was interrupted and did not return a result.]&quot;
+
+    @staticmethod
+    def _sanitize_ai_message_tool_calls(msg):
+        &quot;&quot;&quot;Return an AIMessage with model-bound tool calls safe to serialize.&quot;&quot;&quot;
+        if getattr(msg, &quot;type&quot;, None) != &quot;ai&quot;:
+            return msg
+
+        changed = False
+        update: dict = {}</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- SECTION 4: 运行时主循环与 SSE 流式推送 -->
+      <section id="runtime-worker" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-bolt"></i></div>
+            <h2 class="section-title">4. 运行时主循环与 SSE 流式推送 (<code>worker.py</code>)</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          <code>worker.py:run_agent</code> 是 Agent 真正的物理执行核心。它运行在独立的后台异步任务中，控制 Checkpoint 线程锁、消息流式迭代、Goal 自动延续、工作区变更比对以及数字交付凭证的持久化。
+        </p>
+
+        <!-- Diagram 4 -->
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <button onclick="zoomDiagram(this, 1.15)" title="放大"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="zoomDiagram(this, 0.85)" title="缩小"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="resetDiagram(this)" title="重置"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant UI as 前端 Web / Client
+    participant GW as FastAPI Gateway
+    participant WK as Worker (run_agent)
+    participant LK as Checkpoint Lock
+    participant LG as LangGraph Lead Graph
+    participant SB as StreamBridge
+    participant FS as 线程工作区 (Workspace)
+
+    UI ->> GW: POST /api/threads/<built-in function id>/runs (创建 Run)
+    GW ->> WK: 启动 asyncio.Task(run_agent)
+    activate WK
+    WK ->> LK: 获取线程独占锁 _checkpoint_thread_lock(thread_id)
+    activate LK
+    WK ->> FS: capture_workspace_snapshot (拍摄初始文件状态)
+
+    loop 图流式迭代 (agent.astream)
+        WK ->> LG: agent.astream(stream_mode=["messages", "updates", "values"])
+        activate LG
+        LG -->> WK: yield chunk (Token / ToolCall / StateUpdate)
+        deactivate LG
+        WK ->> SB: bridge.publish(run_id, event, serialize(chunk))
+        SB -->> GW: SSE 数据帧
+        GW -->> UI: 实时推送 (messages / task_* / values)
+    end
+
+    opt 存在会话目标 (Session Goal)
+        WK ->> WK: evaluate_goal_completion (评估任务是否达成)
+        alt 目标未完成且有进展
+            WK ->> LG: 构造 Goal Continuation 消息继续迭代执行
+        end
+    end
+
+    WK ->> FS: diff_workspace (计算生成文件与变更输出)
+    WK ->> WK: _persist_delivery_receipt (持久化交付凭据)
+    WK ->> LK: 释放锁
+    deactivate LK
+    WK ->> SB: publish terminal event (完成信号)
+    deactivate WK
+    GW -->> UI: SSE 流结束
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Block 4: run_agent -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：运行时核心流式主循环 (backend/packages/harness/deerflow/runtime/runs/worker.py)</div>
+          <details class="code-details" open>
+            <summary>查看核心源码 (worker.py 中的 _stream_once 循环)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/runtime/runs/worker.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">async def _stream_once(input_payload: Any, stream_config: RunnableConfig) -&gt; None:
+            nonlocal llm_error_fallback_message
+            file_tool_chunk_batcher = _LargeFileToolChunkBatcher() if &quot;values&quot; in requested_modes else None
+            try:
+                async with _checkpoint_thread_lock(thread_id):
+                    if len(lg_modes) == 1 and not stream_subgraphs:
+                        # Single mode, no subgraphs: astream yields raw chunks
+                        single_mode = lg_modes[0]
+                        async for chunk in agent.astream(input_payload, config=stream_config, stream_mode=single_mode):
+                            if record.abort_event.is_set():
+                                logger.info(&quot;Run %s abort requested — stopping&quot;, run_id)
+                                break
+                            llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk, pre_existing_message_ids)
+                            sse_event = _lg_mode_to_sse_event(single_mode)
+                            await bridge.publish(run_id, sse_event, serialize(chunk, mode=single_mode))
+                            if single_mode == &quot;custom&quot;:
+                                await subagent_events.add(chunk)
+                        return
+                    # Multiple modes or subgraphs: astream yields tuples
+                    async for item in agent.astream(
+                        input_payload,
+                        config=stream_config,
+                        stream_mode=lg_modes,
+                        subgraphs=stream_subgraphs,
+                    ):
+                        if record.abort_event.is_set():
+                            logger.info(&quot;Run %s abort requested — stopping&quot;, run_id)
+                            break
+
+                        mode, chunk, namespace = _unpack_stream_item(item, lg_modes, stream_subgraphs)
+                        if mode is None:
+                            continue
+
+                        if not namespace:
+                            # Only root-graph frames may decide the parent run&#x27;s error
+                            # fallback: a delegated subagent&#x27;s marked fallback is the
+                            # executor&#x27;s to map (task_failed), not this run&#x27;s.
+                            llm_error_fallback_message = llm_error_fallback_message or _extract_llm_error_fallback_message(chunk, pre_existing_message_ids)
+                        await _publish_stream_item(
+                            bridge=bridge,
+                            run_id=run_id,
+                            mode=mode,
+                            chunk=chunk,
+                            namespace=namespace,
+                            file_tool_chunk_batcher=file_tool_chunk_batcher,
+                            subagent_events=subagent_events,
+                        )
+            finally:
+                stream_error = sys.exception()
+                if file_tool_chunk_batcher is not None:
+                    try:
+                        for publish_chunk in file_tool_chunk_batcher.finish():
+                            await bridge.publish(run_id, &quot;messages&quot;, serialize(publish_chunk, mode=&quot;messages&quot;))
+                    except Exception:
+                        if stream_error is None:
+                            raise
+                        logger.debug(&quot;Could not flush pending file-tool chunks for run %s&quot;, run_id, exc_info=True)
+
+        # 7. Stream the requested turn, then optionally continue hidden goal turns.
+        # Clear any stale stop_reason before the first (user-visible) turn only.
+        # Continuation turns preserve a cap reason from the user turn: a run that
+        # hits a cap during the user turn IS capped even if hidden goal-evaluator
+        # turns complete cleanly afterward (#4176 review).
+        if isinstance(runtime.context, dict):
+            runtime.context.pop(&quot;stop_reason&quot;, None)
+        await _stream_once(graph_input, initial_runnable_config)
+        while not record.abort_event.is_set() and not llm_error_fallback_message and (journal is None or not journal.had_llm_error_fallback):
+            continuation_input = await _prepare_goal_continuation_input(
+                bridge=bridge,
+                accessor=accessor,
+                checkpointer=checkpointer,
+                thread_id=thread_id,
+                run_id=run_id,
+                model_name=record.model_name,
+                app_config=ctx.app_config,
+                evaluator_model_factory=_get_goal_evaluator_model,
+                abort_event=record.abort_event,
+                user_id=resolve_runtime_user_id(runtime),
+                deerflow_trace_id=deerflow_trace_id,
+                task_store=task_store,
+                extensions=extensions,</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- SECTION 5: Sub-agent 子代理任务委派系统 -->
+      <section id="subagent-system" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-robot"></i></div>
+            <h2 class="section-title">5. Sub-agent 子代理任务委派系统 (<code>task_tool</code> & <code>executor</code>)</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          DeerFlow 支持主代理将复杂、高耗时的研究、编码或分析任务分派给专门的子代理（如 <code>bash_agent</code>, <code>general_purpose</code>）。
+          子代理拥有独立的执行上下文、4 个轻量级专属 Middleware 以及专属的步骤事件流通道（<code>task_step</code>）。
+        </p>
+
+        <!-- Diagram 5 -->
+        <div class="diagram-container">
+          <div class="diagram-toolbar">
+            <button onclick="zoomDiagram(this, 1.15)" title="放大"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="zoomDiagram(this, 0.85)" title="缩小"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="resetDiagram(this)" title="重置"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="mermaid-wrapper">
+            <div class="mermaid">
+graph LR
+    Lead["Lead Agent<br/>(LLM 生成 task 工具调用)"] -->|调用 task_tool| TaskTool["task_tool.py<br/>• 配额校验 (Max Concurrent/Total)<br/>• 生成 execution_id 与 Trace ID"]
+
+    TaskTool -->|异步派发| Exec["SubagentExecutor.execute<br/>• 调度到独立 ThreadPool / EventLoop<br/>• 隔离运行环境"]
+
+    subgraph SubagentRuntime ["🤖 Subagent 隔离执行图 (Subagent Graph)"]
+        direction TB
+        SubMW["Subagent 4大轻量 Middleware<br/>1. ThreadDataMiddleware<br/>2. SandboxMiddleware<br/>3. GuardrailMiddleware<br/>4. ToolErrorHandlingMiddleware"]
+        SubModel["Subagent Model (独立模型/提示词)"]
+        SubTools["专用工具集 (受限权限)"]
+        
+        SubMW --> SubModel --> SubTools
+    end
+
+    Exec --> SubagentRuntime
+
+    SubagentRuntime -->|步骤消息捕获| StepEmitter["capture_new_step_messages<br/>实时发射 aemit_custom_event('task_step')"]
+    StepEmitter -->|SSE 实时流| SSEOut["前端子任务进度面板 (Task Cards)"]
+
+    SubagentRuntime -->|收集 Token 消耗| Collector["SubagentTokenCollector<br/>统计子任务 Token 花费"]
+
+    SubagentRuntime -->|执行结束| FormatResult["format_subagent_result_message<br/>• 状态: completed / failed / loop_capped<br/>• 产出结果摘要与数字凭证"]
+
+    FormatResult -->|封装为 ToolMessage| LeadResume["返回 Lead Agent<br/>继续主会话推理"]
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Block 5: task_tool & SubagentExecutor -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：task_tool 工具定义 (backend/packages/harness/deerflow/tools/builtins/task_tool.py)</div>
+          <details class="code-details" open>
+            <summary>查看核心源码 (task_tool.py)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/tools/builtins/task_tool.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">@tool(&quot;task&quot;, parse_docstring=True)
+async def task_tool(
+    runtime: Runtime,
+    description: str,
+    prompt: str,
+    subagent_type: str,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -&gt; str | Command:
+    &quot;&quot;&quot;Delegate a bounded task to a specialized subagent in its own context.
+
+    Delegate only when expected benefit clearly exceeds delegation overhead.
+    Useful benefits are:
+    - Material wall-clock savings from independent parallel work
+    - Specialist tools, skills, models, or domain instructions
+    - Context isolation for a bounded, unusually context-heavy investigation
+
+    Built-in subagent types:
+    - **general-purpose**: A capable agent for bounded exploration and action. Use
+      when the assignment has clear specialist or context-isolation benefit, or is
+      one of several independent, non-overlapping tasks that can actually run in
+      parallel.
+    - **bash**: Command execution specialist for running bash commands. This is only
+      available when host bash is explicitly allowed or when using an isolated shell
+      sandbox such as `AioSandboxProvider`. Use it only for a bounded shell workflow
+      with clear context-isolation or independent-parallel benefit.
+      Routine git, build, test, or deploy operations are not sufficient reason to delegate.
+
+    Additional custom subagent types may be defined in config.yaml under
+    `subagents.custom_agents`. Each custom type can have its own system prompt,
+    tools, skills, model, and timeout configuration. If an unknown subagent_type
+    is provided, the error message will list all available types.
+
+    When to use this tool:
+    - Independent tasks that materially reduce wall-clock time when run in parallel
+    - A specialist subagent provides capability unavailable on the direct path
+    - Bounded exploration that would otherwise displace important parent context
+
+    When NOT to use this tool:
+    - Merely because a task is complex, multi-step, verbose, or touches a large repo
+    - Splitting dependent steps across parallel subagents; keep the chain together
+      and delegate it as one bounded task only when specialist or context-isolation
+      benefit clearly wins
+    - Parallel work with overlapping files, shared mutable state, or external side effects
+    - Tasks requiring user interaction or clarification
+
+    Costs to include in the delegation decision:
+    - Repeating the same repository discovery in multiple contexts
+    - Coordination, verification, and synthesis of returned results
+    - Any task the parent can complete more cheaply with direct tools
+
+    Args:
+        description: A short (3-5 word) description of the task for logging/display. ALWAYS PROVIDE THIS PARAMETER FIRST.
+        prompt: The task description for the subagent. Be specific and clear about what needs to be done. ALWAYS PROVIDE THIS PARAMETER SECOND.
+        subagent_type: The type of subagent to use. ALWAYS PROVIDE THIS PARAMETER THIRD.
+    &quot;&quot;&quot;
+    runtime_app_config = _get_runtime_app_config(runtime)
+    metadata: dict = runtime.config.get(&quot;metadata&quot;, {}) if runtime is not None else {}
+    allowed_subagents = metadata.get(&quot;allowed_subagents&quot;)
+    if allowed_subagents is None:
+        available_subagent_names = get_available_subagent_names(app_config=runtime_app_config) if runtime_app_config is not None else get_available_subagent_names()
+    else:
+        available_subagent_names = get_available_subagent_names(app_config=runtime_app_config, allowed_subagents=allowed_subagents) if runtime_app_config is not None else get_available_subagent_names(allowed_subagents=allowed_subagents)
+
+    # Preserve the dedicated sandbox-policy guidance before the generic
+    # registry/policy membership gate filters bash from the visible catalog.
+    if subagent_type == &quot;bash&quot;:
+        host_bash_allowed = is_host_bash_allowed(runtime_app_config) if runtime_app_config is not None else is_host_bash_allowed()
+        if not host_bash_allowed:
+            return _task_result_command(
+                tool_call_id=tool_call_id,
+                status=&quot;failed&quot;,
+                error=LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE,
+            )
+
+    # Get subagent configuration
+    config = get_subagent_config(subagent_type, app_config=runtime_app_config) if runtime_app_config is not None else get_subagent_config(subagent_type)
+    if config is None or subagent_type not in available_subagent_names:
+        if available_subagent_names:
+            available = &quot;, &quot;.join(available_subagent_names)
+        elif allowed_subagents is not None:
+            available = &quot;none permitted by caller policy&quot;
+        else:
+            available = &quot;none&quot;
+        error = f&quot;Unknown subagent type &#x27;{subagent_type}&#x27;. Available: {available}&quot;
+        return _task_result_command(
+            tool_call_id=tool_call_id,
+            status=&quot;failed&quot;,
+            error=error,
+        )
+    # Build config overrides
+    overrides: dict = {}
+
+    # Skills are loaded by SubagentExecutor per-session (aligned with Codex&#x27;s pattern:
+    # each subagent loads its own skills based on config, injected as conversation items).
+    # No longer appended to system_prompt here.
+
+    # Extract parent context from runtime
+    sandbox_state = None
+    thread_data = None
+    thread_id = None
+    parent_model = None
+    trace_id = None
+    user_id = None
+    deerflow_trace_id = None
+    if runtime is not None:
+        sandbox_state = runtime.state.get(&quot;sandbox&quot;)
+        thread_data = runtime.state.get(&quot;thread_data&quot;)
+        thread_id = runtime.context.get(&quot;thread_id&quot;) if runtime.context else None
+        if thread_id is None:
+            thread_id = runtime.config.get(&quot;configurable&quot;, {}).get(&quot;thread_id&quot;)
+
+        # Try to get parent model from configurable
+        parent_model = metadata.get(&quot;model_name&quot;)
+
+        # Get or generate trace_id for distributed tracing
+        trace_id = metadata.get(&quot;trace_id&quot;) or str(uuid.uuid4())[:8]</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：SubagentExecutor 执行引擎 (backend/packages/harness/deerflow/subagents/executor.py)</div>
+          <details class="code-details">
+            <summary>查看核心源码 (SubagentExecutor)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/subagents/executor.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class SubagentExecutor:
+    &quot;&quot;&quot;Executor for running subagents.&quot;&quot;&quot;
+
+    def __init__(
+        self,
+        config: SubagentConfig,
+        tools: list[BaseTool],
+        app_config: AppConfig | None = None,
+        parent_model: str | None = None,
+        sandbox_state: SandboxState | None = None,
+        thread_data: ThreadDataState | None = None,
+        thread_id: str | None = None,
+        trace_id: str | None = None,
+        user_id: str | None = None,
+        user_role: str | None = None,
+        oauth_provider: str | None = None,
+        oauth_id: str | None = None,
+        run_id: str | None = None,
+        channel_user_id: str | None = None,
+        is_internal: bool = False,
+        authz_attributes: Mapping[str, Any] | None = None,
+        deerflow_trace_id: str | None = None,
+        extensions: Any | None = None,
+    ):
+        &quot;&quot;&quot;Initialize the executor.
+
+        Args:
+            config: Subagent configuration.
+            tools: List of all available tools (will be filtered).
+            app_config: Resolved AppConfig. When None, ``_create_agent`` falls
+                back to ``get_app_config()`` (matches the lead-agent factory&#x27;s
+                pattern).
+            parent_model: The parent agent&#x27;s model name for inheritance.
+            sandbox_state: Sandbox state from parent agent.
+            thread_data: Thread data from parent agent.
+            thread_id: Thread ID for sandbox operations.
+            trace_id: Trace ID from parent for distributed tracing.
+            user_id: User ID captured from the parent tool&#x27;s runtime context.
+                When None, the tracing layer falls back to DEFAULT_USER_ID.
+            user_role: Authenticated user&#x27;s role, propagated so GuardrailMiddleware
+                on the subagent can apply role-aware policy to delegated calls.
+            oauth_provider: External identity provider, when authenticated via SSO.
+            oauth_id: Subject id at the external identity provider.
+            run_id: Parent run id, so delegated guardrail decisions attribute to
+                the same run as the lead agent.
+            deerflow_trace_id: DeerFlow request-level correlation id propagated
+                from the parent run for Langfuse metadata correlation.
+            extensions: The parent run&#x27;s immutable ``LoadedExtensions`` snapshot,
+                captured at ``task_tool`` dispatch. When None (embedded client,
+                standalone LangGraph Server), ``_aexecute`` falls back to the
+                process-wide singleton.
+        &quot;&quot;&quot;
+        self.config = config
+        self.app_config = app_config
+        self.parent_model = parent_model
+        # Resolve eagerly only when it does not require loading config.yaml; otherwise defer
+        # to _create_agent (which already loads app_config) so unit tests can construct
+        # executors without a config file present.
+        if config.model != &quot;inherit&quot; or parent_model is not None or app_config is not None:
+            self.model_name: str | None = resolve_subagent_model_name(config, parent_model, app_config=app_config)
+        else:
+            self.model_name = None
+        self.sandbox_state = sandbox_state
+        self.thread_data = thread_data
+        self.thread_id = thread_id
+        # Generate trace_id if not provided (for top-level calls)
+        self.trace_id = trace_id or str(uuid.uuid4())[:8]
+        self.user_id = user_id
+        # Guardrail attribution propagated from the parent runtime context.
+        self.user_role = user_role
+        self.oauth_provider = oauth_provider
+        self.oauth_id = oauth_id
+        self.run_id = run_id
+        # IM-channel sender identity captured at task_tool dispatch: group
+        # chats share one thread across senders, so delegated bash commands
+        # must export the dispatching turn&#x27;s id, not none at all.
+        self.channel_user_id = channel_user_id
+        # Authorization identity propagated from the parent runtime context.
+        # is_internal is written unconditionally (including False) so the
+        # subagent&#x27;s GuardrailMiddleware sees the same provenance as the lead.
+        self.is_internal = is_internal
+        self.authz_attributes = normalize_authz_attributes(authz_attributes)
+        self.deerflow_trace_id = deerflow_trace_id
+        # Parent run&#x27;s extension snapshot. Binding it here (rather than reading
+        # the singleton at execution time) is what keeps one run on a single
+        # extension generation: a concurrent ``set_loaded_extensions()`` between
+        # the lead run&#x27;s start and this subagent&#x27;s execution must not swap the
+        # generation underneath the delegated work.
+        self.extensions = extensions
+
+        self._base_tools = _filter_tools(
+            tools,
+            config.tools,
+            config.disallowed_tools,
+        )
+        self.tools = self._base_tools
+        # Populated from the same per-user, config-filtered registry used to
+        # build the prompt. Runtime skill activation/policy middleware receives
+        # this exact set so a subagent cannot activate an undisclosed skill.
+        self._available_skill_names: set[str] = set()
+        # Guard middlewares that expose ``consume_stop_reason`` (currently
+        # ``TokenBudgetMiddleware`` and ``LoopDetectionMiddleware``), captured in
+        # ``_create_agent`` so ``_aexecute`` can read each after the run and
+        # surface whichever cap fired (token_capped / loop_capped) to the lead
+        # (#3875 Phase 2). Collected as a list — every guard must be checked,
+        # not just the first — because the v2 contract advertises more than one
+        # cap reason.
+        self._stop_reason_middlewares: list[Any] = []
+        # What this subagent was assembled from, published to extension
+        # observers at the end of ``_create_agent``. The prompt and skill set
+        # are captured while ``_build_initial_state`` renders them because
+        # neither is recoverable from the compiled graph afterwards.
+        self.assembly_descriptor: Any | None = None
+        self._assembled_system_prompt = self.config.system_prompt or &quot;&quot;
+        self._assembled_skills: list[Any] = []
+
+        logger.info(f&quot;[trace={self.trace_id}] SubagentExecutor initialized: {config.name} with {len(self.tools)} tools&quot;)
+
+    def _create_agent(
+        self,
+        tools: list[BaseTool] | None = None,
+        *,
+        deferred_setup: &quot;DeferredToolSetup | None&quot; = None,</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- SECTION 6: 沙箱/记忆/MCP核心子系统 -->
+      <section id="core-subsystems" class="doc-section">
+        <div class="section-header">
+          <div class="section-title-wrapper">
+            <div class="section-icon"><i class="fa-solid fa-cubes"></i></div>
+            <h2 class="section-title">6. 核心子系统：沙箱隔离、DeerMem 记忆与 MCP/Skills</h2>
+          </div>
+        </div>
+
+        <p class="section-desc">
+          DeerFlow 的生产就绪能力建立在三大基础设施子系统之上：虚拟路径安全沙箱、跨会话长期记忆提取（DeerMem）、以及支持动态 Slash 激活的 Skills 与 MCP 协议。
+        </p>
+
+        <!-- Subsystem Cards Grid -->
+        <div class="step-grid">
+          <div class="step-card">
+            <div class="step-icon"><i class="fa-solid fa-box-open" style="color: var(--accent-emerald);"></i></div>
+            <div class="step-title">安全沙箱体系 (Sandbox)</div>
+            <div class="step-desc">
+              抽象 <code>SandboxProvider</code>，开发环境使用 <code>LocalSandbox</code>，生产环境使用 Docker 隔离的 <code>AioSandbox</code>。
+              强制虚拟路径映射 (<code>/mnt/user-data/workspace</code>) 与有界管道输出截断。
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="step-icon"><i class="fa-solid fa-brain" style="color: var(--accent-purple);"></i></div>
+            <div class="step-title">DeerMem 长期记忆</div>
+            <div class="step-desc">
+              无损提取用户偏好、身份、决策、修正等信号。通过异步防抖队列驱动后台 LLM 完成事实合并与时效性审查，持久化为 Markdown 并在会话首部安全注入。
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="step-icon"><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-amber);"></i></div>
+            <div class="step-title">Skills & MCP 扩展</div>
+            <div class="step-desc">
+              <code>SKILL.md</code> 渐进式披露：仅暴露元数据，用户通过 <code>/skill-name</code> 显式激活时完整加载。支持 Stdio/SSE 协议 MCP 服务器与延迟工具动态 Promoted。
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Block 6: LocalSandbox & DeerMem -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：LocalSandbox 安全路径转换与命令执行 (backend/packages/harness/deerflow/sandbox/local/local_sandbox.py)</div>
+          <details class="code-details" open>
+            <summary>查看核心源码 (LocalSandbox.execute_command)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/sandbox/local/local_sandbox.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class LocalSandbox(Sandbox):
+    @staticmethod
+    def _shell_name(shell: str) -&gt; str:
+        &quot;&quot;&quot;Return the executable name for a shell path or command.&quot;&quot;&quot;
+        return shell.replace(&quot;\\&quot;, &quot;/&quot;).rsplit(&quot;/&quot;, 1)[-1].lower()
+
+    @staticmethod
+    def _is_powershell(shell: str) -&gt; bool:
+        &quot;&quot;&quot;Return whether the selected shell is a PowerShell executable.&quot;&quot;&quot;
+        return LocalSandbox._shell_name(shell) in {&quot;powershell&quot;, &quot;powershell.exe&quot;, &quot;pwsh&quot;, &quot;pwsh.exe&quot;}
+
+    @staticmethod
+    def _is_cmd_shell(shell: str) -&gt; bool:
+        &quot;&quot;&quot;Return whether the selected shell is cmd.exe.&quot;&quot;&quot;
+        return LocalSandbox._shell_name(shell) in {&quot;cmd&quot;, &quot;cmd.exe&quot;}
+
+    @staticmethod
+    def _is_msys_shell(shell: str) -&gt; bool:
+        &quot;&quot;&quot;Return whether the selected shell is a Git Bash/MSYS shell.&quot;&quot;&quot;
+        normalized = shell.replace(&quot;\\&quot;, &quot;/&quot;).lower()
+        shell_name = LocalSandbox._shell_name(shell)
+        return shell_name in {&quot;sh.exe&quot;, &quot;bash.exe&quot;} and any(part in normalized for part in (&quot;/git/&quot;, &quot;/mingw&quot;, &quot;/msys&quot;))
+
+    @staticmethod
+    def _find_first_available_shell(candidates: tuple[str, ...]) -&gt; str | None:
+        &quot;&quot;&quot;Return the first executable shell path or command found from candidates.&quot;&quot;&quot;
+        for shell in candidates:
+            if os.path.isabs(shell):
+                if os.path.isfile(shell) and os.access(shell, os.X_OK):
+                    return shell
+                continue
+
+            shell_from_path = shutil.which(shell)
+            if shell_from_path is not None:
+                return shell_from_path
+
+        return None
+
+    @staticmethod
+    def _format_timeout_duration(timeout: float) -&gt; str:
+        seconds = float(timeout)
+        if seconds.is_integer():
+            amount = str(int(seconds))
+        else:
+            amount = f&quot;{seconds:g}&quot;
+        unit = &quot;second&quot; if seconds == 1 else &quot;seconds&quot;
+        return f&quot;{amount} {unit}&quot;
+
+    @staticmethod
+    def _format_timeout_notice(timeout: float) -&gt; str:
+        return (
+            f&quot;Command timed out after {LocalSandbox._format_timeout_duration(timeout)} and was terminated. &quot;
+            &quot;To run a long-lived process such as a web server, start it in the background &quot;
+            &quot;and redirect its output, e.g. `your-command &gt; /mnt/user-data/workspace/server.log 2&gt;&amp;1 &amp;`.&quot;
+        )
+
+    @staticmethod
+    def _coerce_process_output(value: str | bytes | None) -&gt; str:
+        if value is None:
+            return &quot;&quot;
+        if isinstance(value, bytes):
+            return value.decode(&quot;utf-8&quot;, errors=&quot;replace&quot;)
+        return value
+
+    @staticmethod
+    def _drain_pipe(fd: int, capture: _BoundedPipeCapture) -&gt; None:
+        try:
+            while chunk := os.read(fd, 8192):
+                capture.append(chunk)
+        except OSError:
+            logger.debug(&quot;Subprocess output pipe closed while draining&quot;, exc_info=True)
+        finally:
+            try:
+                os.close(fd)
+            except OSError:
+                # The fd may already be closed during pipe teardown; cleanup is best-effort.
+                pass
+
+    @staticmethod
+    def _start_pipe_drain(fd: int, name: str) -&gt; tuple[_BoundedPipeCapture, threading.Thread]:
+        capture = _BoundedPipeCapture()
+        thread = threading.Thread(target=LocalSandbox._drain_pipe, args=(fd, capture), name=name, daemon=True)
+        thread.start()
+        return capture, thread
+
+    @staticmethod
+    def _process_group_exists(pgid: int | None) -&gt; bool:
+        if pgid is None:
+            return False
+        try:
+            os.killpg(pgid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+
+    def __init__(self, id: str, path_mappings: list[PathMapping] | None = None):
+        &quot;&quot;&quot;
+        Initialize local sandbox with optional path mappings.
+
+        Args:
+            id: Sandbox identifier
+            path_mappings: List of path mappings with optional read-only flag.
+                          Skills directory is read-only by default.
+        &quot;&quot;&quot;
+        super().__init__(id)
+        self.path_mappings = path_mappings or []
+        # Track files written through write_file so read_file only
+        # reverse-resolves paths in agent-authored content.
+        self._agent_written_paths: set[str] = set()
+
+    # ``path_mappings`` is set once in ``__init__`` and never mutated, so the
+    # sorted views and compiled path-rewrite patterns below are stable for the
+    # sandbox&#x27;s lifetime. Caching them avoids re-sorting and re-compiling these
+    # regexes on every bash/read_file/write_file call (the agent&#x27;s hot path).
+
+    @cached_property
+    def _command_pattern(self) -&gt; re.Pattern[str] | None:
+        &quot;&quot;&quot;Compiled matcher for container paths in shell commands (shell-aware boundaries).&quot;&quot;&quot;
+        mappings = sorted(self.path_mappings, key=lambda m: len(m.container_path), reverse=True)
+        if not mappings:
+            return None
+        # The lookahead (?=/|$|...) ensures we only match at a path-segment boundary,
+        # preventing /mnt/skills from matching inside /mnt/skills-extra.
+        patterns = [re.escape(m.container_path) + r&quot;(?=/|$|[\s\&quot;&#x27;;&amp;|&lt;&gt;()])(?:/[^\s\&quot;&#x27;;&amp;|&lt;&gt;()]*)?&quot; for m in mappings]
+        return re.compile(&quot;|&quot;.join(f&quot;({p})&quot; for p in patterns))</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-code" style="color: var(--accent-cyan);"></i> 核心代码实现：DeerMem 记忆事实提取与防抖队列 (backend/packages/harness/deerflow/agents/memory/backends/deermem/deer_mem.py)</div>
+          <details class="code-details">
+            <summary>查看核心源码 (DeerMem)</summary>
+            <div class="code-box">
+              <div class="code-header">
+                <span class="code-path"><i class="fa-brands fa-python"></i> backend/packages/harness/deerflow/agents/memory/backends/deermem/deer_mem.py</span>
+                <div class="code-actions">
+                  <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> 复制代码</button>
+                </div>
+              </div>
+              <div class="code-content">
+                <pre class="line-numbers"><code class="language-python">class DeerMem(MemoryManager):
+    &quot;&quot;&quot;Default memory backend: file-backed facts + debounced LLM extraction.&quot;&quot;&quot;
+
+    # Backend-private dependencies are PrivateAttr (not pydantic fields): they
+    # are non-pydantic objects (storage / llm / queue) that must NOT participate
+    # in validation / serialization. Built once in model_post_init from
+    # self.backend_config -&gt; DeerMemConfig.
+    _config: Any = PrivateAttr(default=None)
+    _storage: Any = PrivateAttr(default=None)
+    _llm: Any = PrivateAttr(default=None)
+    _updater: Any = PrivateAttr(default=None)
+    _queue: Any = PrivateAttr(default=None)
+    _trivial_patterns: Any = PrivateAttr(default=None)
+
+    # DeerMem implements search() (case-insensitive substring over stored facts),
+    # so it is valid for mode=&quot;tool&quot; (the base invariant validator requires this
+    # for tool mode). Backends without real search inherit the False default and
+    # cannot be used with mode=&quot;tool&quot;.
+    supports_search: ClassVar[bool] = True
+
+    def model_post_init(self, __context: Any) -&gt; None:
+        &quot;&quot;&quot;Construct DeerMem&#x27;s dependencies from ``self.backend_config``.
+
+        Runs after pydantic&#x27;s ``__init__`` validates the fields. Parses
+        ``backend_config`` into a :class:`DeerMemConfig` (defaults apply when
+        empty/None) and wires storage / patterns / llm / updater / queue (DI).
+        &quot;&quot;&quot;
+        self._config = DeerMemConfig.from_backend_config(self.backend_config)
+        self._storage = create_storage(self._config)
+        # Signal-detection patterns (externalized YAML; ``patterns_dir`` override
+        # or bundled defaults = pre-externalization behavior). Loaded once at
+        # construction and reused by ``_prepare_update``&#x27;s detect_* calls.
+        # Pre-load trivial + signal patterns at construction so a misconfigured
+        # patterns_dir (missing / invalid yaml) surfaces at startup, not on the
+        # first update. Compiled patterns are cached by load_patterns.
+        self._trivial_patterns = load_patterns(&quot;trivial&quot;, patterns_dir=self._config.patterns_dir)
+        for _signal_name in SIGNAL_NAMES:
+            load_patterns(_signal_name, patterns_dir=self._config.patterns_dir)
+        # host_llm (host-injected default model) takes precedence over build_llm(model)
+        # so zero-config DeerMem (empty `model`) still extracts via the app default,
+        # mirroring pre-abstraction `model_name: null`. Standalone (no factory) -&gt; None.
+        self._llm = self._config.host_llm if self._config.host_llm is not None else build_llm(self._config.model)
+        self._updater = MemoryUpdater(self._config, self._storage, self._llm, prompts_dir=self._config.prompts_dir, callbacks=self.callbacks)
+        # Retrieval is derived data. The first search for a scope lazily
+        # rebuilds it; Gateway warm-up performs the full rebuild off-loop.
+        self._retrieval_lock = threading.RLock()
+        self._retrieval_warmed_scopes: set[tuple[str | None, str | None]] = set()
+        self._retrieval_fully_warmed = False
+        # Validate the *global* explicit prompt templates at construction so a
+        # misconfigured prompts_dir surfaces at startup rather than as a silent
+        # dropped update. Per-agent overrides ({prompts_dir}/{agent}/*.yaml)
+        # cannot be known here -- they are validated lazily at first use and
+        # logged at ERROR by the updater&#x27;s exception handler.
+        # fact_extraction is dormant (not wired to any runtime caller); excluded.
+        if self._config.prompts_dir is not None:
+            _dummy_vars = {
+                &quot;current_memory&quot;: &quot;{}&quot;,
+                &quot;conversation&quot;: &quot;(validation)&quot;,
+                &quot;correction_hint&quot;: &quot;&quot;,
+                &quot;staleness_review_section&quot;: &quot;&quot;,
+                &quot;consolidation_section&quot;: &quot;&quot;,
+            }
+            load_prompt(&quot;staleness_review&quot;, prompts_dir=self._config.prompts_dir).format(stale_facts=&quot;&quot;)
+            load_prompt(&quot;consolidation&quot;, prompts_dir=self._config.prompts_dir).format(consolidation_groups=&quot;&quot;, max_groups=1)
+            load_prompt_messages(&quot;memory_update&quot;, _dummy_vars, prompts_dir=self._config.prompts_dir)
+        self._queue = MemoryUpdateQueue(self._config, self._updater)
+
+    @classmethod
+    def from_config(
+        cls,
+        backend_config: dict[str, Any] | None = None,
+        *,
+        mode: Literal[&quot;middleware&quot;, &quot;tool&quot;] = &quot;middleware&quot;,
+        **host_hooks: Any,
+    ) -&gt; DeerMem:
+        &quot;&quot;&quot;Build a DeerMem with dependencies wired, consuming host hooks.
+
+        The factory passes host hooks (tracing, hidden-message filter,
+        trace-context manager, a host-llm factory) as kwargs rather than
+        injecting them into ``backend_config``; DeerMem merges the ones it
+        consumes (DeerMemConfig fields) here, respecting explicit
+        ``backend_config`` values. ``host_llm`` is built from the host factory
+        only when no model is configured (host_llm takes precedence over
+        ``build_llm(model)``; building an unused host default when a model
+        exists would waste startup time). The actual dependency wiring runs in
+        ``model_post_init`` (shared with direct construction).
+        &quot;&quot;&quot;
+        config_dict = dict(backend_config or {})
+        for key in (&quot;should_keep_hidden_message&quot;, &quot;trace_context_manager&quot;, &quot;extraction_callback&quot;):
+            if key not in config_dict and key in host_hooks:
+                config_dict[key] = host_hooks[key]
+        if &quot;host_llm&quot; not in config_dict:
+            model_cfg = config_dict.get(&quot;model&quot;)
+            if not (isinstance(model_cfg, dict) and model_cfg.get(&quot;model&quot;)):
+                host_llm_factory = host_hooks.get(&quot;host_llm_factory&quot;)
+                if host_llm_factory is not None:
+                    config_dict[&quot;host_llm&quot;] = host_llm_factory()
+        # callbacks is a base MemoryManager field (not DeerMemConfig); pass through.
+        # config_dict carries the host hooks merged above so model_post_init can
+        # parse them into DeerMemConfig (self._config, PrivateAttr). After wiring,
+        # restore backend_config to the pure data the host passed (no injected
+        # hooks) so the field stays serializable and matches the README contract
+        # (&quot;host hooks arrive as from_config kwargs, NOT in backend_config&quot;) --
+        # the hooks live in self._config, not the backend_config field.
+        instance = cls(backend_config=config_dict, mode=mode, callbacks=host_hooks.get(&quot;callbacks&quot;))
+        instance.backend_config = dict(backend_config or {})
+        return instance
+
+    # ── Write ────────────────────────────────────────────────────────────
+    def add(
+        self,
+        thread_id: str,
+        messages: list[Any],
+        *,
+        agent_name: str | None = None,
+        user_id: str | None = None,
+        trace_id: str | None = None,</code></pre>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Page Footer -->
+  <footer class="page-footer">
+    <div>🦌 DeerFlow 2.0 Super Agent Harness &bull; 核心代码架构全景与执行流程图</div>
+    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+      基于真实仓库代码构建 &bull; 涵盖 Lead Agent, 14+ Middlewares, Subagents, Sandbox, DeerMem & MCP Engine
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#1e3a8a',
+        primaryTextColor: '#f3f4f6',
+        primaryBorderColor: '#3b82f6',
+        lineColor: '#60a5fa',
+        secondaryColor: '#312e81',
+        tertiaryColor: '#111827',
+        fontFamily: 'Inter, sans-serif'
+      },
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+
+    // Theme Toggle
+    function toggleTheme() {
+      const body = document.body;
+      const currentTheme = body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', newTheme);
+      
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeText');
+      const prismTheme = document.getElementById('prism-theme');
+
+      if (newTheme === 'light') {
+        themeIcon.className = 'fa-solid fa-sun';
+        themeText.innerText = '暗黑模式';
+        prismTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css';
+      } else {
+        themeIcon.className = 'fa-solid fa-moon';
+        themeText.innerText = '明亮模式';
+        prismTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css';
+      }
+    }
+
+    // Diagram Zoom & Pan
+    const diagramScales = new WeakMap();
+
+    function zoomDiagram(btn, factor) {
+      const container = btn.closest('.diagram-container');
+      const wrapper = container.querySelector('.mermaid-wrapper');
+      let currentScale = diagramScales.get(wrapper) || 1.0;
+      currentScale = Math.min(Math.max(currentScale * factor, 0.4), 2.5);
+      diagramScales.set(wrapper, currentScale);
+      wrapper.style.transform = `scale(${currentScale})`;
+    }
+
+    function resetDiagram(btn) {
+      const container = btn.closest('.diagram-container');
+      const wrapper = container.querySelector('.mermaid-wrapper');
+      diagramScales.set(wrapper, 1.0);
+      wrapper.style.transform = 'scale(1)';
+    }
+
+    // Copy Code Handler
+    function copyCode(btn) {
+      const codeBlock = btn.closest('.code-box').querySelector('code');
+      const text = codeBlock.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check" style="color: #10b981;"></i> 已复制!';
+        btn.style.borderColor = '#10b981';
+        setTimeout(() => {
+          btn.innerHTML = original;
+          btn.style.borderColor = '';
+        }, 2000);
+      }).catch(err => {
+        console.error('复制失败:', err);
+      });
+    }
+
+    // Sidebar Active State on Scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section.doc-section');
+      const scrollPos = window.scrollY + 120;
+      
+      sections.forEach(section => {
+        const top = section.offsetTop;
+        const height = section.offsetHeight;
+        const id = section.getAttribute('id');
+        
+        if (scrollPos >= top && scrollPos < top + height) {
+          document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+            item.classList.remove('active');
+            const link = item.querySelector('a');
+            if (link && link.getAttribute('href') === '#' + id) {
+              item.classList.add('active');
+            }
+          });
+        }
+      });
+    });
+
+    // Search Filter
+    function handleSearch(query) {
+      const term = query.toLowerCase().trim();
+      const cards = document.querySelectorAll('.card, .step-card, section.doc-section');
+      
+      if (!term) {
+        cards.forEach(c => c.style.display = '');
+        return;
+      }
+      
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(term)) {
+          card.style.display = '';
+        } else {
+          if (card.tagName === 'SECTION') {
+            const hasMatchInside = card.querySelectorAll('.card, .step-card');
+            let anyMatch = false;
+            hasMatchInside.forEach(inner => {
+              if (inner.innerText.toLowerCase().includes(term)) anyMatch = true;
+            });
+            card.style.display = anyMatch ? '' : 'none';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
